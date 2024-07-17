@@ -92,6 +92,72 @@
 				<&vdsp2_region>, <&vdsp3_region>,
 				<&pap_region>;
 	};
+
+	panel_wxga {
+		compatible = "hannstar,hsd070jww3", "panel-lvds";
+		
+		width-mm = <152>;
+		height-mm = <91>;
+
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			clock-frequency = <63300000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len = <64>;
+			hfront-porch = <1>;
+			hback-porch = <1>;
+			vfront-porch = <1>;
+			vback-porch = <1>;
+			vsync-len = <14>;
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_wxga_in: endpoint {
+					remote-endpoint = <&max96752F_out>;
+				};
+			};
+		};
+	};
+
+	panel_1080p {
+		compatible = "hannstar,hsd128juw1", "panel-lvds";
+		
+		width-mm = <283>;
+		height-mm = <159>;
+
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			clock-frequency = <133800000>;
+			hactive = <1920>;
+			vactive = <1080>;
+			hsync-len = <12>;
+			hfront-porch = <26>;
+			hback-porch = <16>;
+			vfront-porch = <8>;
+			vback-porch = <24>;
+			vsync-len = <3>;
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_1080p_in: endpoint {
+					remote-endpoint = <&max96752F_out>;
+				};
+			};
+		};
+	};
 };
 
 &avb0 {
@@ -483,7 +549,7 @@
 		no-use-gpio;
 		no-use-scramble;
 		hpd-poll;
-		status = "okay";
+		status = "disable";
 
 		ports {
 			#address-cells = <1>;
@@ -528,7 +594,35 @@
 			port@1 {
 				reg = <1>;
 				max96789_out: endpoint {
-					remote-endpoint = <&vc0113_con>;
+					remote-endpoint = <&max96752F_in>;
+				};
+			};
+		};
+	};
+
+	max96752F@48 {
+		compatible = "maxim,max96752F";
+		reg = <0x48>;
+		status = "okay";
+		
+		panel_switch;
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in: endpoint {
+					remote-endpoint = <&max96789_out>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out: endpoint {
+					//remote-endpoint = <&panel_wxga_in>;
+					remote-endpoint = <&panel_1080p_in>;
 				};
 			};
 		};
@@ -772,8 +866,8 @@
 	ports {
 		port@1 {
 			endpoint {
-				remote-endpoint = <&sn65dsi86_in0>;
-				//remote-endpoint = <&max96789_in>;
+				//remote-endpoint = <&sn65dsi86_in0>;
+				remote-endpoint = <&max96789_in>;
 				data-lanes = <1 2 3 4>;
 			};
 		};

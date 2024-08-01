@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  Maxim max96752F driver
+ * Core driver for Analog Devices MAX96752F deserializer
  *  
+ * Supported:
+ * 	- LVDS format adjust
+ *	- RGB format adjust
  *
- * Currently supported:
- * - max96752F
- *   = DSI ~ LVDS
- *   - Supported
+ * Copyright (C) Retronix Tech Inc.
+ *
+ * Contact:
+ *	Felix Hsu <felixhsu@retronix.com.tw>
  */
 
 #include <linux/bits.h>
@@ -60,7 +63,7 @@ static int max96752F_bridge_attach(struct drm_bridge *bridge,
 	struct max96752F *priv = bridge_to_max96752F(bridge);
 
 	if(priv->next_bridge)
-		printk("[%s %d]: max96752F find panel bridge\n", __func__, __LINE__);
+		dev_dbg(priv->dev, "%s: max96752F find panel bridge\n", __func__);
 
 	return drm_bridge_attach(bridge->encoder, priv->next_bridge,
 				 &priv->bridge, flags);
@@ -80,7 +83,7 @@ static void max96752F_atomic_bridge_enable(struct drm_bridge *bridge,
 	bool lvds_format_jeida;
 	int ret;
 
-	printk("[%s %d]: entering enable func\n", __func__, __LINE__);
+	dev_info(priv->dev, "%s: entered drm bridge enable\n", __func__);
 
 	gpiod_set_value_cansleep(priv->pwdn, 1);
 	msleep(45);
@@ -119,28 +122,28 @@ static void max96752F_atomic_bridge_enable(struct drm_bridge *bridge,
 	ret = regmap_update_bits(priv->regmap, REG_REG2, REG_REG2_VID_EN, 0x00);
 
 	if(ret)
-		printk("[%s %d]: REG2_VID_EN write 0 failed\n");
+		dev_dbg(priv->dev, "%s: REG2_VID_EN write 0 failed\n", __func__);
 
 	/* write GPIO4 if needed */
 	if(priv->panel_switch)
 		ret = regmap_write(priv->regmap, REG_GPIO4_A, 0x92);
 
 	if(ret)
-		printk("[%s %d]: GPIO4 write 0x92 failed\n");
+		dev_dbg(priv->dev, "%s: GPIO4 write 0x92 failed\n", __func__);
 
 	/* RGB666 use 3 lane */
 	if(!lvds_format_24bpp)
 		ret = regmap_update_bits(priv->regmap, REG_OLDI1, REG_OLDI1_LANE, 0x20);
 
 	if(ret)
-		printk("[%s %d]: OLDI1_LANE write 1 failed\n");
+		dev_dbg(priv->dev, "%s: OLDI1_LANE write 1 failed\n", __func__);
 
 	/* choose format vesa/jeida */
 	if(!lvds_format_jeida)
 		ret = regmap_update_bits(priv->regmap, REG_OLDI1, REG_OLDI1_FMT, 0x40);
 
 	if(ret)
-		printk("[%s %d]: OLDI_FMT write 1 failed\n");
+		dev_dbg(priv->dev, "%s: OLDI_FMT write 1 failed\n", __func__);
 
 	/* 
 	 * 1920x1080@60 should use LVDS split mode
@@ -150,12 +153,12 @@ static void max96752F_atomic_bridge_enable(struct drm_bridge *bridge,
 		ret = regmap_update_bits(priv->regmap, REG_OLDI1, REG_OLDI1_SPL_EN, 0x08);
 
 	if(ret)
-		printk("[%s %d]: OLDI_SPL_EN write 1 failed\n");
+		dev_dbg(priv->dev, "%s: OLDI_SPL_EN write 1 failed\n", __func__);
 
 	ret = regmap_update_bits(priv->regmap, REG_REG2, REG_REG2_VID_EN, 0x40);
 
 	if(ret)
-		printk("[%s %d]: REG2_VID_EN write 1 failed\n");
+		dev_dbg(priv->dev, "%s: REG2_VID_EN write 1 failed\n", __func__);
 }
 
 static void max96752F_atomic_bridge_disable(struct drm_bridge *bridge,
@@ -163,7 +166,7 @@ static void max96752F_atomic_bridge_disable(struct drm_bridge *bridge,
 {
 	struct max96752F *priv = bridge_to_max96752F(bridge);
 
-	printk("[%s %d]: entering disable func\n", __func__, __LINE__);
+	dev_info(priv->dev, "%s: entered disable func\n", __func__);
 	gpiod_set_value_cansleep(priv->pwdn, 0);
 	usleep_range(1000,1100);
 }
@@ -222,7 +225,7 @@ static int max96752F_bridge_probe(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	int ret;
 
-	printk("[%s %d]: entering probe func\n", __func__, __LINE__);
+	dev_info(dev, "%s: entered probe func\n", __func__);
 
 	priv = devm_kzalloc(dev, sizeof(struct max96752F), GFP_KERNEL);
 	if(!priv)
@@ -248,8 +251,6 @@ static int max96752F_bridge_probe(struct i2c_client *client)
 
 	priv->bridge.funcs = &max96752F_bridge_funcs;
 	priv->bridge.of_node = dev->of_node;
-	//priv->bridge.type = DRM_MODE_CONNECTOR_LVDS;
-	//priv->bridge.ops = (DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_MODES);
 
 	drm_bridge_add(&priv->bridge);
 
@@ -281,5 +282,6 @@ static struct i2c_driver max96752F_driver = {
 };
 module_i2c_driver(max96752F_driver);
 
-MODULE_DESCRIPTION("Maxim max96752F GMSL2 to LVDS bridge driver");
+MODULE_AUTHOR("Felix Hsu <felixhsu@retronix.com.tw>");
+MODULE_DESCRIPTION("Max96752F GMSL2 to LVDS maxim serdes bridge driver");
 MODULE_LICENSE("GPL v2");

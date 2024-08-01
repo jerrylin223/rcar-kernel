@@ -119,8 +119,14 @@
 
 			port@0 {
 				reg = <0>;
-				panel_wxga_in: endpoint {
-					remote-endpoint = <&max96752F_out>;
+				panel_wxga_in0: endpoint {
+					remote-endpoint = <&max96752F_out0>;
+				};
+			};
+			port@1 {
+				reg = <0>;
+				panel_wxga_in1: endpoint {
+					remote-endpoint = <&max96752F_out1>;
 				};
 			};
 		};
@@ -153,7 +159,7 @@
 			port@0 {
 				reg = <0>;
 				panel_1080p_in: endpoint {
-					remote-endpoint = <&max96752F_out>;
+					remote-endpoint = <&max96752F_out0>;
 				};
 			};
 		};
@@ -576,6 +582,10 @@
 		reg = <0x60>, <0x0A>, <0x0B>;
 		enable-gpios = <&io_expander4 0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
+
+		maxim,gmsl-link-type = <2 2>;
+		maxim,gmsl2-link-rate = <6>;
+		maxim,gmsl-cable-sel = <1 1>;
 		
 		ports {
 			#address-cells = <1>;
@@ -583,9 +593,12 @@
 
 			port@0 {
 				reg = <0>;
-				max96789_in: endpoint {
-					bus-type = <1>;
-					clock-lanes = <0>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				max96789_in: endpoint@0 {
+					reg = <0>;
+
 					data-lanes = <1 2 3 4>;
 					remote-endpoint = <&dsi0_out>;
 				};
@@ -593,19 +606,26 @@
 
 			port@1 {
 				reg = <1>;
-				max96789_out: endpoint {
-					remote-endpoint = <&max96752F_in>;
+				max96789_out0: endpoint {
+					remote-endpoint = <&max96752F_in0>;
+				};
+			};
+			
+			port@2 {
+				reg = <2>;
+				max96789_out1: endpoint {
+					remote-endpoint = <&max96752F_in1>;
 				};
 			};
 		};
 	};
 
-	max96752F@48 {
+	max96752F_0@48 {
 		compatible = "maxim,max96752F";
 		reg = <0x48>;
 		status = "okay";
 		
-		panel_switch;
+		//panel_switch;
 		
 		ports {
 			#address-cells = <1>;
@@ -613,16 +633,44 @@
 
 			port@0 {
 				reg = <0>;
-				max96752F_in: endpoint {
-					remote-endpoint = <&max96789_out>;
+				max96752F_in0: endpoint {
+					remote-endpoint = <&max96789_out0>;
 				};
 			};
 
 			port@1 {
 				reg = <1>;
-				max96752F_out: endpoint {
-					//remote-endpoint = <&panel_wxga_in>;
-					remote-endpoint = <&panel_1080p_in>;
+				max96752F_out0: endpoint {
+					remote-endpoint = <&panel_wxga_in0>;
+					//remote-endpoint = <&panel_1080p_in>;
+				};
+			};
+		};
+	};
+
+	max96752F_1@4C {
+		compatible = "maxim,max96752F";
+		reg = <0x4C>;
+		status = "okay";
+		
+		//panel_switch;
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in1: endpoint {
+					remote-endpoint = <&max96789_out1>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out1: endpoint {
+					remote-endpoint = <&panel_wxga_in1>;
+					//remote-endpoint = <&panel_1080p_in>;
 				};
 			};
 		};
@@ -631,10 +679,10 @@
 	vc0113@55 {
 		compatible = "dummy,panel";
 		reg = <0x55>;
-		status = "okay";
+		status = "disable";
 		port {
 			vc0113_con: endpoint {
-				remote-endpoint = <&max96789_out>;
+				remote-endpoint = <&max96789_out0>;
 			};
 		};
 	};

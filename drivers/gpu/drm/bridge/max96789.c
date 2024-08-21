@@ -139,6 +139,32 @@ static int max96789_patgen(struct max96789_priv *priv, int pat_flags)
 	return ret;
 }
 
+/*
+ * sysfs
+ */
+static int dual_set = 0;
+
+static ssize_t max96789_dual_view_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", dual_set);
+}
+
+static ssize_t max96789_dual_view_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+
+	ret = kstrtoint(buf, 0, &dual_set);
+	if (ret)
+		return ret;
+
+	if (dual_set > 1 || dual_set < 0)
+		return -EINVAL;
+
+	return count;
+}
+
+static DEVICE_ATTR(dual_view, 0644, max96789_dual_view_show, max96789_dual_view_store);
+
 /* see MST_BT */
 static const u32 max96789_i2c_clk_lut[] = {
 	9920,
@@ -733,10 +759,16 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	priv->bridge.driver_private = priv;
 	priv->bridge.funcs = &max96789_bridge_funcs;
 	priv->bridge.of_node = priv->dev->of_node;
-	priv->bridge.type = DRM_MODE_CONNECTOR_DisplayPort;
+	priv->bridge.type = DRM_MODE_CONNECTOR_VIRTUAL;
 	priv->bridge.ops = DRM_BRIDGE_OP_MODES;
 		
 	drm_bridge_add(&priv->bridge);
+
+	ret = device_create_file(dev, &dev_attr_dual_view);
+	if (ret) {
+		dev_err(dev, "failed to create dual view controll sysfs file %d\n", ret);
+		return ret;
+	}
 	
 	return max96789_dev_init(priv);
 }

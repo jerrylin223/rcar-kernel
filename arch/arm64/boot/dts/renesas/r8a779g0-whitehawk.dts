@@ -105,12 +105,12 @@
 			clock-frequency = <63300000>;
 			hactive = <1280>;
 			vactive = <768>;
-			hsync-len = <64>;
-			hfront-porch = <1>;
-			hback-porch = <1>;
-			vfront-porch = <1>;
-			vback-porch = <1>;
-			vsync-len = <14>;
+			hsync-len = <10>;
+			hfront-porch = <28>;
+			hback-porch = <28>;
+			vfront-porch = <6>;
+			vback-porch = <6>;
+			vsync-len = <4>;
 		};
 
 		ports {
@@ -124,7 +124,7 @@
 				};
 			};
 			port@1 {
-				reg = <0>;
+				reg = <1>;
 				panel_wxga_in1: endpoint {
 					remote-endpoint = <&max96752F_out1>;
 				};
@@ -144,9 +144,9 @@
 			clock-frequency = <133800000>;
 			hactive = <1920>;
 			vactive = <1080>;
-			hsync-len = <12>;
-			hfront-porch = <26>;
-			hback-porch = <16>;
+			hsync-len = <22>;
+			hfront-porch = <28>;
+			hback-porch = <30>;
 			vfront-porch = <8>;
 			vback-porch = <24>;
 			vsync-len = <3>;
@@ -158,8 +158,14 @@
 
 			port@0 {
 				reg = <0>;
-				panel_1080p_in: endpoint {
+				panel_1080p_in0: endpoint {
 					remote-endpoint = <&max96752F_out0>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				panel_1080p_in1: endpoint {
+					remote-endpoint = <&max96752F_out1>;
 				};
 			};
 		};
@@ -625,7 +631,7 @@
 		reg = <0x48>;
 		status = "okay";
 		
-		//panel_switch;
+		panel_switch;
 		
 		ports {
 			#address-cells = <1>;
@@ -641,8 +647,8 @@
 			port@1 {
 				reg = <1>;
 				max96752F_out0: endpoint {
-					remote-endpoint = <&panel_wxga_in0>;
-					//remote-endpoint = <&panel_1080p_in>;
+					//remote-endpoint = <&panel_wxga_in0>;
+					remote-endpoint = <&panel_1080p_in0>;
 				};
 			};
 		};
@@ -653,7 +659,7 @@
 		reg = <0x4C>;
 		status = "okay";
 		
-		//panel_switch;
+		panel_switch;
 		
 		ports {
 			#address-cells = <1>;
@@ -669,8 +675,8 @@
 			port@1 {
 				reg = <1>;
 				max96752F_out1: endpoint {
-					remote-endpoint = <&panel_wxga_in1>;
-					//remote-endpoint = <&panel_1080p_in>;
+					//remote-endpoint = <&panel_wxga_in1>;
+					remote-endpoint = <&panel_1080p_in1>;
 				};
 			};
 		};

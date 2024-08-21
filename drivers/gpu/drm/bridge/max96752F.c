@@ -175,9 +175,11 @@ static enum drm_mode_status max96752F_bridge_mode_valid(struct drm_bridge *bridg
 		     					const struct drm_display_info *info,
      		     					const struct drm_display_mode *mode)
 {
-	/* pixel clock range < 160 MHz */
-	if (mode->clock > 160000)
-		return MODE_CLOCK_HIGH;
+	/* clock range < dual LVDS 160 MHz */
+	//if (mode->clock > 160000) {
+	//	printk("%s: %d failed from max96752F drm mode valid\n", __func__, mode->clock);
+	//	return MODE_CLOCK_HIGH;
+	//}
 
 	return MODE_OK;
 }

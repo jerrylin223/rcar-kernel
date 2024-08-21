@@ -509,6 +509,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	u32 bus_flags;
 	int err;
 
+	printk("%s: entered probe\n", __func__);
 	panel = devm_kzalloc(dev, sizeof(*panel), GFP_KERNEL);
 	if (!panel)
 		return -ENOMEM;
@@ -563,6 +564,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 			panel_simple_parse_panel_timing_node(dev, panel, &dt);
 	}
 
+	printk("%s: entered probe\n", __func__);
 	connector_type = desc->connector_type;
 	/* Catch common mistakes for panels. */
 	switch (connector_type) {
@@ -625,6 +627,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (err)
 		goto free_ddc;
 
+	printk("%s: entered probe\n", __func__);
 	drm_panel_add(&panel->base);
 
 	dev_set_drvdata(dev, panel);
@@ -3902,6 +3905,44 @@ static const struct panel_desc arm_rtsm = {
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
 };
 
+static const struct drm_display_mode hannstar_hsd128juw1_modes[] = {
+	{
+		.clock = 133800,
+		.hdisplay = 1920,
+		.hsync_start = 1920 + 30,
+		.hsync_end = 1920 + 30 + 22,
+		.htotal = 1920 + 30 + 22 + 28,
+		.vdisplay = 1080,
+		.vsync_start = 1080 + 24,
+		.vsync_end = 1080 + 24 + 3,
+		.vtotal = 1080 + 24 + 3 + 8,
+	},
+	{
+		.clock = 267600,
+		.hdisplay = 3840,
+		.hsync_start = 3840 + 60,
+		.hsync_end = 3840 + 60 + 44,
+		.htotal = 3840 + 60 + 44 + 56,
+		.vdisplay = 1080,
+		.vsync_start = 1080 + 24,
+		.vsync_end = 1080 + 24 + 3,
+		.vtotal = 1080 + 24 + 3 + 8,
+	},
+};
+
+static const struct panel_desc hannstar_hsd128juw1 = {
+	.modes = hannstar_hsd128juw1_modes,
+	.num_modes = ARRAY_SIZE(hannstar_hsd128juw1_modes),
+	.bpc = 8,
+	.size = {
+		.width = 283,
+		.height = 159,
+	},
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
+	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.connector_type = DRM_MODE_CONNECTOR_LVDS,
+};
+
 static const struct of_device_id platform_of_match[] = {
 	{
 		.compatible = "ampire,am-1280800n3tzqw-t00h",
@@ -4303,6 +4344,9 @@ static const struct of_device_id platform_of_match[] = {
 		.compatible = "winstar,wf35ltiacd",
 		.data = &winstar_wf35ltiacd,
 	}, {
+		.compatible = "hannstar,hsd128juw1",
+		.data = &hannstar_hsd128juw1,
+	}, {
 		/* Must be the last entry */
 		.compatible = "panel-dpi",
 		.data = &panel_dpi,
@@ -4316,6 +4360,7 @@ static int panel_simple_platform_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *id;
 
+	printk("%s: entered probe\n", __func__);
 	id = of_match_node(platform_of_match, pdev->dev.of_node);
 	if (!id)
 		return -ENODEV;

@@ -58,6 +58,7 @@ struct lt9611 {
 	u8 edid_buf[EDID_SEG_SIZE];
 	u32 vic;
 };
+static struct lt9611 *lt9611_test;
 
 #define LT9611_PAGE_CONTROL	0xff
 
@@ -1118,6 +1119,355 @@ static void lt9611_audio_exit(struct lt9611 *lt9611)
 	}
 }
 
+typedef struct video_timing{
+	u16 hfp;
+	u16 hs;
+	u16 hbp;
+	u16 hact;
+	u16 htotal;
+	u16 vfp;
+	u16 vs;
+	u16 vbp;
+	u16 vact;
+	u16 vtotal;
+	bool h_polarity;
+	bool v_polarity;
+	u16 vic;
+	u8 aspact_ratio;  // 0=no data, 1=4:3, 2=16:9, 3=no data.
+	u32 pclk_khz;
+};
+
+#define	MPEG_PKT_EN 0x01
+#define	AIF_PKT_EN  0x02
+#define SPD_PKT_EN	0x04
+#define AVI_PKT_EN	0x08
+#define UD1_PKT_EN	0x10
+#define UD0_PKT_EN	0x20
+
+u8 pcr_m;
+
+void HDMI_WriteI2C_Byte(u16 RegAddr, u8 d)
+{
+    static u16 topB = 0x00;
+    u16 reg;
+    
+    if(RegAddr == 0xff)
+    {
+        topB = d;
+        return;
+    }
+    
+    reg = (topB & 0xff) << 8 | (RegAddr & 0xff);
+	regmap_write(lt9611_test->regmap, reg, d);
+
+	return ;
+}
+
+void LT9611_System_Init(void)  //dsren
+{
+		HDMI_WriteI2C_Byte(0xFF,0x82);
+		HDMI_WriteI2C_Byte(0x51,0x11);
+		//Timer for Frequency meter
+		HDMI_WriteI2C_Byte(0xFF,0x82);
+		HDMI_WriteI2C_Byte(0x1b,0x69); //Timer 2
+		HDMI_WriteI2C_Byte(0x1c,0x78);
+		HDMI_WriteI2C_Byte(0xcb,0x69); //Timer 1
+		HDMI_WriteI2C_Byte(0xcc,0x78);
+		
+		/*power consumption for work*/
+		HDMI_WriteI2C_Byte(0xff,0x80); 
+		HDMI_WriteI2C_Byte(0x04,0xf0);
+		HDMI_WriteI2C_Byte(0x06,0xf0);
+		HDMI_WriteI2C_Byte(0x0a,0x80);
+		HDMI_WriteI2C_Byte(0x0b,0x46); //csc clk
+		HDMI_WriteI2C_Byte(0x0d,0xef);
+		HDMI_WriteI2C_Byte(0x11,0xfa);
+}
+
+void LT9611_pattern_en(void)
+{
+	HDMI_WriteI2C_Byte(0xff,0x82); 
+	HDMI_WriteI2C_Byte(0x4f,0x80);    //[7] = Select ad_txpll_d_clk.
+	HDMI_WriteI2C_Byte(0x50,0x20);
+}
+
+void LT9611_PLL(struct video_timing *video_format) //zhangzhichun
+{
+	u32 pclk;
+	unsigned int pll_lock_flag, cal_done_flag, band_out;
+	u8 hdmi_post_div;
+	u8 i;
+	pclk = video_format->pclk_khz;
+	
+	HDMI_WriteI2C_Byte(0xff,0x81);
+	HDMI_WriteI2C_Byte(0x23,0x40); //Enable LDO and disable PD
+	HDMI_WriteI2C_Byte(0x24,0x62); //0x62, LG25UM58 issue, 20180824
+	HDMI_WriteI2C_Byte(0x25,0x80); //pre-divider
+	HDMI_WriteI2C_Byte(0x26,0x55);
+	HDMI_WriteI2C_Byte(0x2c,0x37);
+	//HDMI_WriteI2C_Byte(0x2d,0x99); //txpll_divx_set&da_txpll_freq_set
+	//HDMI_WriteI2C_Byte(0x2e,0x01);
+	HDMI_WriteI2C_Byte(0x2f,0x01);
+	//HDMI_WriteI2C_Byte(0x26,0x55);
+	HDMI_WriteI2C_Byte(0x27,0x66);
+	HDMI_WriteI2C_Byte(0x28,0x88);
+
+	HDMI_WriteI2C_Byte(0x2a,0x20); //for U3.
+	
+	if (pclk > 150000) {
+		HDMI_WriteI2C_Byte(0x2d,0x88);
+		hdmi_post_div = 0x01;
+	} else if (pclk > 80000) {
+		HDMI_WriteI2C_Byte(0x2d,0x99);
+		hdmi_post_div = 0x02;
+	} else {
+		HDMI_WriteI2C_Byte(0x2d,0xaa); //0xaa
+		hdmi_post_div = 0x04;
+	}
+		
+	pcr_m = (u8)((pclk * 5 * hdmi_post_div) / 27000);
+        pcr_m --;
+		
+        HDMI_WriteI2C_Byte(0xff,0x83);
+        HDMI_WriteI2C_Byte(0x2d,0x40);		//M up limit
+        HDMI_WriteI2C_Byte(0x31,0x08);		//M down limit
+        HDMI_WriteI2C_Byte(0x26,0x80 | pcr_m);	/* fixed M is to let pll locked*/
+
+        pclk = pclk / 2;
+        HDMI_WriteI2C_Byte(0xff,0x82);		//13.5M
+        HDMI_WriteI2C_Byte(0xe3,pclk / 65536);
+        pclk = pclk % 65536;
+        HDMI_WriteI2C_Byte(0xe4,pclk / 256);
+        HDMI_WriteI2C_Byte(0xe5,pclk % 256);
+
+        HDMI_WriteI2C_Byte(0xde,0x20);		// pll cal en, start calibration
+        HDMI_WriteI2C_Byte(0xde,0xe0);
+
+        HDMI_WriteI2C_Byte(0xff,0x80);
+        HDMI_WriteI2C_Byte(0x11,0x5a);		/* Pcr clk reset */
+        HDMI_WriteI2C_Byte(0x11,0xfa);
+        HDMI_WriteI2C_Byte(0x16,0xf2);		/* pll cal digital reset */ 
+        HDMI_WriteI2C_Byte(0x18,0xdc);		/* pll analog reset */
+        HDMI_WriteI2C_Byte(0x18,0xfc);
+        HDMI_WriteI2C_Byte(0x16,0xf3);		/*start calibration*/ 
+   
+	/* pll lock status */
+	for(i = 0; i < 6 ; i++) {   
+        	HDMI_WriteI2C_Byte(0xff,0x80);	
+        	HDMI_WriteI2C_Byte(0x16,0xe3);	/* pll lock logic reset */
+        	HDMI_WriteI2C_Byte(0x16,0xf3);
+        
+        	regmap_read(lt9611_test->regmap, 0x82e7, &cal_done_flag);
+        	regmap_read(lt9611_test->regmap, 0x82e6, &band_out);
+        	regmap_read(lt9611_test->regmap, 0x8215, &pll_lock_flag);
+        	HDMI_WriteI2C_Byte(0xff,0x82);
+
+		if ((pll_lock_flag & 0x80)&&(cal_done_flag & 0x80)&&(band_out != 0xff)) {
+			break;
+		} else {
+			HDMI_WriteI2C_Byte(0xff,0x80);
+			HDMI_WriteI2C_Byte(0x11,0x5a); /* Pcr clk reset */
+			HDMI_WriteI2C_Byte(0x11,0xfa);
+			HDMI_WriteI2C_Byte(0x16,0xf2); /* pll cal digital reset */ 
+			HDMI_WriteI2C_Byte(0x18,0xdc); /* pll analog reset */
+			HDMI_WriteI2C_Byte(0x18,0xfc);
+			HDMI_WriteI2C_Byte(0x16,0xf3); /*start calibration*/ 
+		}
+	}
+}
+
+void LT9611_pattern_gcm(struct video_timing *video_format)
+{
+	u8 POL;
+	POL = (video_format-> h_polarity)*0x10 + (video_format-> v_polarity)*0x20;
+	POL = ~POL;
+	POL &= 0x30;
+
+	HDMI_WriteI2C_Byte(0xff,0x82);
+	HDMI_WriteI2C_Byte(0xa3,(u8)((video_format->hs+video_format->hbp)/256));//de_delay
+	HDMI_WriteI2C_Byte(0xa4,(u8)((video_format->hs+video_format->hbp)%256));
+	HDMI_WriteI2C_Byte(0xa5,(u8)((video_format->vs+video_format->vbp)%256));//de_top
+	HDMI_WriteI2C_Byte(0xa6,(u8)(video_format->hact/256));
+	HDMI_WriteI2C_Byte(0xa7,(u8)(video_format->hact%256));  //de_cnt
+	HDMI_WriteI2C_Byte(0xa8,(u8)(video_format->vact/256));
+	HDMI_WriteI2C_Byte(0xa9,(u8)(video_format->vact%256));  //de_line
+	HDMI_WriteI2C_Byte(0xaa,(u8)(video_format->htotal/256));
+	HDMI_WriteI2C_Byte(0xab,(u8)(video_format->htotal%256));//htotal
+	HDMI_WriteI2C_Byte(0xac,(u8)(video_format->vtotal/256));
+	HDMI_WriteI2C_Byte(0xad,(u8)(video_format->vtotal%256));//vtotal
+	HDMI_WriteI2C_Byte(0xae,(u8)(video_format->hs/256));
+	HDMI_WriteI2C_Byte(0xaf,(u8)(video_format->hs%256));    //hvsa
+	HDMI_WriteI2C_Byte(0xb0,(u8)(video_format->vs%256));    //vsa
+
+	HDMI_WriteI2C_Byte(0x47,(u8)(POL|0x07));  //sync polarity
+
+}
+
+void LT9611_HDMI_TX_Digital(struct video_timing *video_format) //dsren
+{
+	//bool hdmi_mode = lt9611->hdmi_mode;
+	u8 VIC = video_format->vic;
+	u8 AR = video_format->aspact_ratio;
+	u8 pb0,pb2,pb4;
+	u8 infoFrame_en;
+
+	infoFrame_en = (AIF_PKT_EN|AVI_PKT_EN|SPD_PKT_EN);
+	//MPEG_PKT_EN,AIF_PKT_EN,SPD_PKT_EN,AVI_PKT_EN,UD0_PKT_EN,UD1_PKT_EN
+
+	pb2 =  (AR<<4) + 0x08;
+	pb4 =  VIC;
+
+	pb0 = ((pb2 + pb4) <= 0x5f)?(0x5f - pb2 - pb4):(0x15f - pb2 - pb4);
+
+	HDMI_WriteI2C_Byte(0xff,0x82);
+	//~ if(lt9611.hdmi_mode == HDMI) {
+	//~ 	HDMI_WriteI2C_Byte(0xd6,0x8e); //sync polarity
+	//~ } else if(lt9611.hdmi_mode == DVI) {
+		HDMI_WriteI2C_Byte(0xd6,0x0e); //sync polarity
+	//~ }
+		
+	//~ if(lt9611.audio_out==audio_i2s)
+	//~ 	HDMI_WriteI2C_Byte(0xd7,0x04);
+		
+	//~ if(lt9611.audio_out==audio_spdif)
+	//~ 	HDMI_WriteI2C_Byte(0xd7,0x80); 
+
+	//AVI
+	HDMI_WriteI2C_Byte(0xff,0x84);
+	HDMI_WriteI2C_Byte(0x43,pb0);   //AVI_PB0
+
+	//HDMI_WriteI2C_Byte(0x44,0x10);//AVI_PB1
+	HDMI_WriteI2C_Byte(0x45,pb2);  //AVI_PB2
+	HDMI_WriteI2C_Byte(0x47,pb4);   //AVI_PB4
+
+	HDMI_WriteI2C_Byte(0xff,0x84);
+   	HDMI_WriteI2C_Byte(0x10,0x02); //data iland
+	HDMI_WriteI2C_Byte(0x12,0x64); //act_h_blank
+	
+	//VS_IF, 4k 30hz need send VS_IF packet.
+	if(VIC == 95) {
+		HDMI_WriteI2C_Byte(0xff,0x84);
+   		HDMI_WriteI2C_Byte(0x3d,infoFrame_en|UD0_PKT_EN); //UD1 infoframe enable //revise on 20200715
+
+		HDMI_WriteI2C_Byte(0x74,0x81);  //HB0
+		HDMI_WriteI2C_Byte(0x75,0x01);  //HB1
+		HDMI_WriteI2C_Byte(0x76,0x05);  //HB2
+		HDMI_WriteI2C_Byte(0x77,0x49);  //PB0
+		HDMI_WriteI2C_Byte(0x78,0x03);  //PB1
+		HDMI_WriteI2C_Byte(0x79,0x0c);  //PB2
+		HDMI_WriteI2C_Byte(0x7a,0x00);  //PB3
+		HDMI_WriteI2C_Byte(0x7b,0x20);  //PB4
+		HDMI_WriteI2C_Byte(0x7c,0x01);  //PB5
+	} else {
+		HDMI_WriteI2C_Byte(0xff,0x84);
+   		HDMI_WriteI2C_Byte(0x3d,infoFrame_en); //UD1 infoframe enable
+	}
+	
+	if(infoFrame_en&&SPD_PKT_EN) {
+		HDMI_WriteI2C_Byte(0xff,0x84);
+		HDMI_WriteI2C_Byte(0xc0,0x83);  //HB0
+		HDMI_WriteI2C_Byte(0xc1,0x01);  //HB1
+		HDMI_WriteI2C_Byte(0xc2,0x19);  //HB2
+
+		HDMI_WriteI2C_Byte(0xc3,0x00);  //PB0
+		HDMI_WriteI2C_Byte(0xc4,0x01);  //PB1
+		HDMI_WriteI2C_Byte(0xc5,0x02);  //PB2
+		HDMI_WriteI2C_Byte(0xc6,0x03);  //PB3
+		HDMI_WriteI2C_Byte(0xc7,0x04);  //PB4
+		HDMI_WriteI2C_Byte(0xc8,0x00);  //PB5
+	}				
+}
+
+void LT9611_HDMI_TX_Phy(void) //xyji
+{
+	HDMI_WriteI2C_Byte(0xff,0x81);
+	HDMI_WriteI2C_Byte(0x30,0x6a);
+	//~ if(lt9611.hdmi_coupling_mode==ac_mode)
+	//~ {
+		//~ HDMI_WriteI2C_Byte(0x31,0x73); //DC: 0x44, AC:0x73
+  	//~ }
+	//~ else //lt9611.hdmi_coupling_mode==dc_mode
+	//~ {
+		HDMI_WriteI2C_Byte(0x31,0x44);
+	//~ }
+		HDMI_WriteI2C_Byte(0x32,0x4a);
+		HDMI_WriteI2C_Byte(0x33,0x0b);
+		HDMI_WriteI2C_Byte(0x34,0x00);
+		HDMI_WriteI2C_Byte(0x35,0x00);
+		HDMI_WriteI2C_Byte(0x36,0x00);
+		HDMI_WriteI2C_Byte(0x37,0x44);
+		HDMI_WriteI2C_Byte(0x3f,0x0f);
+		HDMI_WriteI2C_Byte(0x40,0x98); //clk swing
+		HDMI_WriteI2C_Byte(0x41,0x98); //D0 swing
+		HDMI_WriteI2C_Byte(0x42,0x98); //D1 swing
+		HDMI_WriteI2C_Byte(0x43,0x98); //D2 swing
+		HDMI_WriteI2C_Byte(0x44,0x0a);
+}
+
+
+void LT9611_HDCP_Disable(void) //luodexing
+{
+	HDMI_WriteI2C_Byte(0xff,0x85); 
+	HDMI_WriteI2C_Byte(0x15,0x45); //enable HDCP
+}
+
+void LT9611_HDMI_Out_Enable(void) //dsren
+{
+	HDMI_WriteI2C_Byte(0xff,0x81);
+	HDMI_WriteI2C_Byte(0x23,0x40);
+	
+	HDMI_WriteI2C_Byte(0xff,0x82);
+	HDMI_WriteI2C_Byte(0xde,0x20);
+	HDMI_WriteI2C_Byte(0xde,0xe0);
+		
+	HDMI_WriteI2C_Byte(0xff,0x80); 
+	HDMI_WriteI2C_Byte(0x18,0xdc); /* txpll sw rst */
+	HDMI_WriteI2C_Byte(0x18,0xfc);
+	HDMI_WriteI2C_Byte(0x16,0xf1); /* txpll calibration rest */ 
+	HDMI_WriteI2C_Byte(0x16,0xf3);
+	
+	HDMI_WriteI2C_Byte(0x11,0x5a); //Pcr reset
+	HDMI_WriteI2C_Byte(0x11,0xfa);
+	
+	HDMI_WriteI2C_Byte(0xff,0x81);
+	HDMI_WriteI2C_Byte(0x30,0xea);
+
+	LT9611_HDCP_Disable();
+
+}
+
+static void lt9611_test_pattern(struct lt9611 *lt9611)
+{
+	unsigned int rev;
+	int ret;
+
+	struct video_timing video = {88, 44, 148, 1920, 2200, 4, 5, 36, 1080, 1125, 1, 1, 16, 0x02, 148500};
+
+	lt9611_test = lt9611;
+    
+	regmap_write(lt9611->regmap, 0x80ee, 0x01);
+	ret = regmap_read(lt9611->regmap, 0x8002, &rev);
+	if (ret)
+		dev_err(lt9611->dev, "failed to read revision: %d\n", ret);
+	else
+		dev_info(lt9611->dev, "LT9611 revision: 0x%x\n", rev);
+
+	HDMI_WriteI2C_Byte(0xFF,0x81);
+	HDMI_WriteI2C_Byte(0x01,0x18); //sel xtal clock
+	HDMI_WriteI2C_Byte(0xFF,0x80);
+    
+	LT9611_System_Init(); 
+	LT9611_pattern_en();
+	LT9611_PLL(&video);
+	LT9611_pattern_gcm(&video);
+	
+	LT9611_HDMI_TX_Digital(&video);
+	LT9611_HDMI_TX_Phy();
+
+	LT9611_HDMI_Out_Enable();       
+                   
+}
+
 static int lt9611_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -1139,69 +1489,73 @@ static int lt9611_probe(struct i2c_client *client,
 	lt9611->sleep = false;
 
 	lt9611->regmap = devm_regmap_init_i2c(client, &lt9611_regmap_config);
-	if (IS_ERR(lt9611->regmap)) {
-		dev_err(lt9611->dev, "regmap i2c init failed\n");
-		return PTR_ERR(lt9611->regmap);
-	}
+	//~ if (IS_ERR(lt9611->regmap)) {
+		//~ dev_err(lt9611->dev, "regmap i2c init failed\n");
+		//~ return PTR_ERR(lt9611->regmap);
+	//~ }
 
 	ret = lt9611_parse_dt(&client->dev, lt9611);
-	if (ret) {
-		dev_err(dev, "failed to parse device tree\n");
-		return ret;
-	}
+	//~ if (ret) {
+		//~ dev_err(dev, "failed to parse device tree\n");
+		//~ return ret;
+	//~ }
 
 	ret = lt9611_gpio_init(lt9611);
-	if (ret < 0)
-		goto err_of_put;
+	//~ if (ret < 0)
+		//~ goto err_of_put;
 
 	ret = lt9611_regulator_init(lt9611);
-	if (ret < 0)
-		goto err_of_put;
+	//~ if (ret < 0)
+		//~ goto err_of_put;
 
 	lt9611_assert_5v(lt9611);
 
 	ret = lt9611_regulator_enable(lt9611);
-	if (ret)
-		goto err_of_put;
+	//~ if (ret)
+		//~ goto err_of_put;
 
 	lt9611_reset(lt9611);
 
-	ret = lt9611_read_device_rev(lt9611);
-	if (ret) {
-		dev_err(dev, "failed to read chip rev\n");
-		goto err_disable_regulators;
-	}
+	lt9611_test_pattern(lt9611);
 
-	ret = devm_request_threaded_irq(dev, client->irq, NULL,
-					lt9611_irq_thread_handler,
-					IRQF_ONESHOT, "lt9611", lt9611);
-	if (ret) {
-		dev_err(dev, "failed to request irq\n");
-		goto err_disable_regulators;
-	}
+	//~ ret = lt9611_read_device_rev(lt9611);
+	//~ if (ret) {
+		//~ dev_err(dev, "failed to read chip rev\n");
+		//~ goto err_disable_regulators;
+	//~ }
 
-	i2c_set_clientdata(client, lt9611);
+	//~ ret = devm_request_threaded_irq(dev, client->irq, NULL,
+					//~ lt9611_irq_thread_handler,
+					//~ IRQF_ONESHOT, "lt9611", lt9611);
+	//~ if (ret) {
+		//~ dev_err(dev, "failed to request irq\n");
+		//~ goto err_disable_regulators;
+	//~ }
 
-	lt9611->bridge.funcs = &lt9611_bridge_funcs;
-	lt9611->bridge.of_node = client->dev.of_node;
-	lt9611->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID |
-			     DRM_BRIDGE_OP_HPD | DRM_BRIDGE_OP_MODES;
-	lt9611->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
+	//~ i2c_set_clientdata(client, lt9611);
 
-	drm_bridge_add(&lt9611->bridge);
+	//~ lt9611->bridge.funcs = &lt9611_bridge_funcs;
+	//~ lt9611->bridge.of_node = client->dev.of_node;
+	//~ lt9611->bridge.ops = DRM_BRIDGE_OP_DETECT | DRM_BRIDGE_OP_EDID |
+			     //~ DRM_BRIDGE_OP_HPD | DRM_BRIDGE_OP_MODES;
+	//~ lt9611->bridge.type = DRM_MODE_CONNECTOR_HDMIA;
 
-	lt9611_enable_hpd_interrupts(lt9611);
+	//~ drm_bridge_add(&lt9611->bridge);
 
-	return lt9611_audio_init(dev, lt9611);
+	//~ lt9611_enable_hpd_interrupts(lt9611);
 
-err_disable_regulators:
-	regulator_bulk_disable(ARRAY_SIZE(lt9611->supplies), lt9611->supplies);
+	//~ return lt9611_audio_init(dev, lt9611);
 
-err_of_put:
-	of_node_put(lt9611->dsi1_node);
-	of_node_put(lt9611->dsi0_node);
+    return 0;
+    
+//~ err_disable_regulators:
+	//~ regulator_bulk_disable(ARRAY_SIZE(lt9611->supplies), lt9611->supplies);
 
-	return ret;
+//~ err_of_put:
+	//~ of_node_put(lt9611->dsi1_node);
+	//~ of_node_put(lt9611->dsi0_node);
+
+	//~ return ret;
 }
 
 static int lt9611_remove(struct i2c_client *client)

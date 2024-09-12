@@ -114,6 +114,84 @@
 			regulator-boot-on;
 			regulator-always-on;
 	};
+
+	panel_wxga {
+		compatible = "hannstar,hsd070jww3", "panel-lvds";
+		
+		width-mm = <152>;
+		height-mm = <91>;
+
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			clock-frequency = <63300000>;
+			hactive = <1280>;
+			vactive = <768>;
+			hsync-len = <10>;
+			hfront-porch = <28>;
+			hback-porch = <28>;
+			vfront-porch = <6>;
+			vback-porch = <6>;
+			vsync-len = <4>;
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_wxga_in0: endpoint {
+					remote-endpoint = <&max96752F_out0>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				panel_wxga_in1: endpoint {
+					remote-endpoint = <&max96752F_out1>;
+				};
+			};
+		};
+	};
+
+	panel_1080p {
+		compatible = "hannstar,hsd128juw1", "panel-lvds";
+		
+		width-mm = <283>;
+		height-mm = <159>;
+
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			clock-frequency = <133800000>;
+			hactive = <1920>;
+			vactive = <1080>;
+			hsync-len = <22>;
+			hfront-porch = <28>;
+			hback-porch = <30>;
+			vfront-porch = <8>;
+			vback-porch = <24>;
+			vsync-len = <3>;
+		};
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				panel_1080p_in0: endpoint {
+					remote-endpoint = <&max96752F_out2>;
+				};
+			};
+			port@1 {
+				reg = <1>;
+				panel_1080p_in1: endpoint {
+					remote-endpoint = <&max96752F_out3>;
+				};
+			};
+		};
+	};
 };
 
 &ref_clk {
@@ -545,7 +623,7 @@
 		no-use-gpio;
 		no-use-scramble;
 		hpd-poll;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -570,8 +648,30 @@
 
 &i2c0_switch_ch1 {
 	U26: lt9611@3b {
+		compatible = "lontium,lt9611";
 		reg = <0x3b>;
-		status = "disabled";
+		interrupt-parent = <&gpio0>;
+		interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&gpio6 11 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				lt9611_in: endpoint {
+					remote-endpoint = <&dsi1_out>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				lt9611_out: endpoint {
+				};
+			};
+		};
 	};
 };
 
@@ -582,19 +682,38 @@
 		enable-gpios = <&U188 0 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 
+		maxim,gmsl-link-type = <2 2>;
+		maxim,gmsl2-link-rate = <6>;
+		maxim,gmsl-cable-sel = <1 1>;
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			port@0 {
 				reg = <0>;
-				u28_max96789_in: endpoint {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				u28_max96789_in: endpoint@0 {
+					reg = <0>;
+
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&dsi0_out>;
 				};
 			};
 
 			port@1 {
 				reg = <1>;
-				u28_max96789_out: endpoint {
+				u28_max96789_out0: endpoint {
+					remote-endpoint = <&max96752F_in0>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				u28_max96789_out1: endpoint {
+					remote-endpoint = <&max96752F_in1>;
 				};
 			};
 		};
@@ -606,19 +725,142 @@
 		enable-gpios = <&U190 0 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 
+		maxim,gmsl-link-type = <2 2>;
+		maxim,gmsl2-link-rate = <6>;
+		maxim,gmsl-cable-sel = <1 1>;
+
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			port@0 {
 				reg = <0>;
-				u181_max96789_in: endpoint {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				u181_max96789_in: endpoint@0 {
+					reg = <0>;
+
+					data-lanes = <1 2 3 4>;
+					remote-endpoint = <&dsi1_out>;
 				};
 			};
 
 			port@1 {
 				reg = <1>;
-				u181_max96789_out: endpoint {
+				u181_max96789_out0: endpoint {
+					remote-endpoint = <&max96752F_in2>;
+				};
+			};
+
+			port@2 {
+				reg = <2>;
+				u181_max96789_out1: endpoint {
+					remote-endpoint = <&max96752F_in3>;
+				};
+			};
+		};
+	};
+
+	max96752F_0@48 {
+		compatible = "maxim,max96752F";
+		reg = <0x48>;
+		status = "disabled";
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in0: endpoint {
+					remote-endpoint = <&u28_max96789_out0>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out0: endpoint {
+					remote-endpoint = <&panel_wxga_in0>;
+				};
+			};
+		};
+	};
+
+	max96752F_1@4C {
+		compatible = "maxim,max96752F";
+		reg = <0x4C>;
+		status = "disabled";
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in1: endpoint {
+					remote-endpoint = <&u28_max96789_out1>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out1: endpoint {
+					remote-endpoint = <&panel_wxga_in1>;
+				};
+			};
+		};
+	};
+
+	max96752F_2@28 {
+		compatible = "maxim,max96752F";
+		reg = <0x28>;
+		status = "disabled";
+		
+		panel_switch;
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in2: endpoint {
+					remote-endpoint = <&u181_max96789_out0>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out2: endpoint {
+					remote-endpoint = <&panel_1080p_in0>;
+				};
+			};
+		};
+	};
+
+	max96752F_3@2A {
+		compatible = "maxim,max96752F";
+		reg = <0x2A>;
+		status = "disabled";
+		
+		panel_switch;
+		
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				max96752F_in3: endpoint {
+					remote-endpoint = <&u181_max96789_out1>;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				max96752F_out3: endpoint {
+					remote-endpoint = <&panel_1080p_in0>;
 				};
 			};
 		};
@@ -1105,6 +1347,16 @@
 };
 #endif
 
+&gpio0 {
+	status = "okay";
+	sn65dsi86_en {
+		gpio-hog;
+		gpios = <11 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "U21_SN65DSI86_EN";
+	};
+};
+
 &du {
 	status = "disabled";
 };
@@ -1136,8 +1388,7 @@
 	ports {
 		port@1 {
 			endpoint {
-//				remote-endpoint = <&sn65dsi86_in1>;
-//				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&lt9611_in>;
 			};
 		};
 	};

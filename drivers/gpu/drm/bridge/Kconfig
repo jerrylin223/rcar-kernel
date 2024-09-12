@@ -248,6 +248,15 @@ source "drivers/gpu/drm/bridge/cadence/Kconfig"
 
 source "drivers/gpu/drm/bridge/synopsys/Kconfig"
 
+config DRM_MAX_96752F
+	tristate "MAXIM MAX96752 GMSL2 to LVDS bridge"
+	depends on OF
+	select DRM_KMS_HELPER
+	select REGMAP_I2C
+	select DRM_PANEL
+	help
+	  Maxim Max96752F GMSL2 to LVDS Deserializer bridge driver
+
 config DRM_MAX_96789
 	tristate "MAXIM MAX96789 bridge"
 	depends on OF

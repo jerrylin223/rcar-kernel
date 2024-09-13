@@ -83,12 +83,13 @@
 		};
 	};
 
-	dsi-con1 {
-		compatible = "dsi-connector";
+	hdmi-out {
+		compatible = "hdmi-connector";
+		type = "a";
 
 		port {
-			dsi_con_out1: endpoint {
-//			remote-endpoint = <&sn65dsi86_out1>;
+			hdmi_con: endpoint {
+				remote-endpoint = <&lt9611_out>;
 			};
 		};
 	};
@@ -623,7 +624,7 @@
 		no-use-gpio;
 		no-use-scramble;
 		hpd-poll;
-		status = "disabled";
+		status = "okay";
 
 		ports {
 			#address-cells = <1>;
@@ -669,6 +670,7 @@
 			port@2 {
 				reg = <2>;
 				lt9611_out: endpoint {
+					remote-endpoint = <&hdmi_con>;
 				};
 			};
 		};
@@ -1358,11 +1360,11 @@
 };
 
 &du {
-	status = "disabled";
+	status = "okay";
 };
 
 &dsi0 {
-	status = "disabled";
+	status = "okay";
 
 	use-extal-clk;
 
@@ -1377,11 +1379,11 @@
 };
 
 &dsc {
-	status = "disabled";
+	status = "okay";
 };
 
 &dsi1 {
-	status = "disabled";
+	status = "okay";
 
 	use-extal-clk;
 
@@ -1522,7 +1524,7 @@
 	pinctrl-0 = <&sound_clk_pins>, <&sound_pins>;
 	pinctrl-names = "default";
 
-	status = "okay";
+	status = "disabled";
 
 	/* Single DAI */
 	#sound-dai-cells = <0>;

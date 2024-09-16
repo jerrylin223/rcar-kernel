@@ -419,8 +419,6 @@ static irqreturn_t lt9611_irq_thread_handler(int irq, void *dev_id)
 	unsigned int irq_flag0 = 0;
 	unsigned int irq_flag3 = 0;
 
-	printk("%s: irq triggered\n", __func__);
-
 	regmap_read(lt9611->regmap, 0x820f, &irq_flag3);
 	regmap_read(lt9611->regmap, 0x820c, &irq_flag0);
 
@@ -514,13 +512,10 @@ static int lt9611_power_on(struct lt9611 *lt9611)
 		{ 0x8011, 0xfa },
 	};
 
-	if (lt9611->power_on) {
-		printk("%s: lt9611 has been power on\n", __func__);
+	if (lt9611->power_on)
 		return 0;
-	}
 
 	ret = regmap_multi_reg_write(lt9611->regmap, seq, ARRAY_SIZE(seq));
-	printk("%s: lt9611 power on seq write return %d\n", __func__, ret);
 
 	if (!ret)
 		lt9611->power_on = true;
@@ -600,7 +595,7 @@ static enum drm_connector_status lt9611_bridge_detect(struct drm_bridge *bridge)
 	int connected = 0;
 
 	regmap_read(lt9611->regmap, 0x825e, &reg_val);
-	connected  = (reg_val & (BIT(2) | BIT(0)));
+	connected  = (reg_val & BIT(2));
 
 	lt9611->status = connected ?  connector_status_connected :
 				connector_status_disconnected;
@@ -702,7 +697,6 @@ lt9611_bridge_atomic_enable(struct drm_bridge *bridge,
 	struct drm_display_mode *mode;
 	unsigned int postdiv;
 
-	printk("%s: atomic enabled fire off\n", __func__);
 	connector = drm_atomic_get_new_connector_for_encoder(state, bridge->encoder);
 	if (WARN_ON(!connector))
 		return;
@@ -747,16 +741,15 @@ lt9611_bridge_atomic_disable(struct drm_bridge *bridge,
 	struct lt9611 *lt9611 = bridge_to_lt9611(bridge);
 	int ret;
 
-	printk("%s: atomic disnabled fire off\n", __func__);
 	/* Disable HDMI output */
 	ret = regmap_write(lt9611->regmap, 0x8130, 0x6a);
 	if (ret) {
-		dev_err(lt9611->dev, "video on failed\n");
+		dev_err(lt9611->dev, "video off failed\n");
 		return;
 	}
 
 	if (lt9611_power_off(lt9611)) {
-		dev_err(lt9611->dev, "power on failed\n");
+		dev_err(lt9611->dev, "power off failed\n");
 		return;
 	}
 }
@@ -910,8 +903,6 @@ static struct edid *lt9611_bridge_edid_read(struct drm_bridge *bridge,
 	struct lt9611 *lt9611 = bridge_to_lt9611(bridge);
 	struct edid *edid;
 	
-	printk("%s: start reading edid\n", __func__);
-
 	lt9611_power_on(lt9611);
 	edid = drm_do_get_edid(connector, lt9611_get_edid_block, lt9611);
 	if(!edid)

@@ -99,14 +99,14 @@
 				<&vdsp2_region>, <&vdsp3_region>,
 				<&pap_region>, <&region_40bit>;
 	};
-#ifdef SUPPORT_DA7212	
+
 	sound_card: sound {
 		compatible = "audio-graph-card";
 
 		label = "rcar-sound";
-		dais = <&rsnd_port0>;	/* DA7212 Audio Codec */
+		dais = <&rsnd_port0>;	/* Audio Codec */
 	};
-#endif
+
 	reg_5p0v: regulator-5p0v {
 			compatible = "regulator-fixed";
 			regulator-name = "fixed-5.0V";
@@ -654,6 +654,14 @@
 		interrupt-parent = <&gpio0>;
 		interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
 		reset-gpios = <&gpio6 11 GPIO_ACTIVE_HIGH>;
+
+		clocks = <&rcar_sound>;
+		clock-names = "mclk";
+
+		#sound-dai-cells = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		status = "okay";
 
 		ports {
@@ -669,6 +677,13 @@
 
 			port@2 {
 				reg = <2>;
+				lt9611_audio: endpoint {
+					remote-endpoint = <&rsnd_endpoint>;
+				};
+			};
+
+			port@3 {
+				reg = <3>;
 				lt9611_out: endpoint {
 					remote-endpoint = <&hdmi_con>;
 				};
@@ -1515,29 +1530,33 @@
  * define audio_clkin, rcar_sound and codec
  */
 &audio_clkin {
-	clock-frequency = <22579200>;
+	clock-frequency = <22579200>; /* 44.1kHz groups */
+//	clock-frequency = <24576000>; /* 48  kHz groups */
 };
 
 
-#ifdef SUPPORT_DA7212
 &rcar_sound {
 	pinctrl-0 = <&sound_clk_pins>, <&sound_pins>;
 	pinctrl-names = "default";
 
-	status = "disabled";
+	status = "okay";
 
 	/* Single DAI */
 	#sound-dai-cells = <0>;
 
 	/* audio_clkout0 */
 	#clock-cells = <0>;
-	clock-frequency = <11289600>;
+	clock-frequency = <11289600>; /* 44.1kHz groups */
+//	clock-frequency = <12288000>; /* 48  kHz groups */
 
 	ports {
 		rsnd_port0: port@0 {
 			rsnd_endpoint: endpoint {
+#ifdef SUPPORT_DA7212
 				remote-endpoint = <&da7212_endpoint>;
-
+#else
+				remote-endpoint = <&lt9611_audio>;
+#endif
 				dai-format = "i2s";
 				bitclock-master = <&rsnd_endpoint>;
 				frame-master = <&rsnd_endpoint>;
@@ -1549,6 +1568,7 @@
 	};
 };
 
+#ifdef SUPPORT_DA7212
 &i2c2_switch_ch4 {
 	da7212: codec@1a {
 		compatible = "dlg,da7212";

@@ -977,7 +977,7 @@ static int lt9611_parse_dt(struct device *dev,
 
 	lt9611->ac_mode = of_property_read_bool(dev->of_node, "lt,ac-mode");
 
-	return drm_of_find_panel_or_bridge(dev->of_node, 2, -1, NULL, &lt9611->next_bridge);
+	return drm_of_find_panel_or_bridge(dev->of_node, 3, -1, NULL, &lt9611->next_bridge);
 }
 
 static int lt9611_gpio_init(struct lt9611 *lt9611)
@@ -1021,7 +1021,7 @@ static int lt9611_hdmi_hw_params(struct device *dev, void *data,
 {
 	struct lt9611 *lt9611 = data;
 
-	if (hparms->sample_rate == 48000)
+	if (hparms->sample_rate == 48000 || hparms->sample_rate ==44100)
 		regmap_write(lt9611->regmap, 0x840f, 0x2b);
 	else if (hparms->sample_rate == 96000)
 		regmap_write(lt9611->regmap, 0x840f, 0xab);

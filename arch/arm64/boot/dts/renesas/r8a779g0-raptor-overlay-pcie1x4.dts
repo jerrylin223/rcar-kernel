@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0
+
+#include <dt-bindings/clock/r8a779g0-cpg-mssr.h>
+
+/dts-v1/;
+/plugin/;
+
+/* overlay pcie to 1ch 4lanes - disable pcie1 controller */
+
+&pciec0 {
+	num-lanes = <4>;
+	clocks = <&cpg CPG_MOD 624>, <&cpg CPG_MOD 625>;
+	clock-names = "pcie0_clk", "pcie1_clk";
+};
+
+&pciec1 {
+	status = "disabled";
+};

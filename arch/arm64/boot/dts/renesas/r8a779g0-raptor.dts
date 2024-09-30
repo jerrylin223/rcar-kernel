@@ -412,10 +412,13 @@
 &avb1 {
 	pinctrl-0 = <&avb1_pins>, <&vddq_eth_pins>;
 	pinctrl-names = "default";
-//	phy-handle = <&phy1>;
-	status = "okay";
-	phy-reset-gpios = <&gpio6 1 GPIO_ACTIVE_LOW>;
 
+	renesas,no-ether-link;
+	phy-reset-gpios = <&gpio6 1 GPIO_ACTIVE_LOW>;
+	rx-internal-delay-ps = <2000>;
+	tx-internal-delay-ps = <2000>;
+	status = "okay";
+		
 	fixed-link {
 		speed = <1000>;
 		full-duplex;
@@ -425,11 +428,15 @@
 &avb2 {
 	pinctrl-0 = <&avb2_pins>, <&vddq_eth_pins>;
 	pinctrl-names = "default";
-//	phy-handle = <&phy2>;
-	status = "okay";
-	phy-reset-gpios = <&gpio5 5 GPIO_ACTIVE_LOW>;
 
+	renesas,no-ether-link;
+	phy-reset-gpios = <&gpio4 2 GPIO_ACTIVE_LOW>;
+	rx-internal-delay-ps = <2000>;
+	tx-internal-delay-ps = <2000>;
+	status = "okay";
+		
 	fixed-link {
+		reset-gpios = <&gpio5 5 GPIO_ACTIVE_LOW>;
 		speed = <1000>;
 		full-duplex;
 	};

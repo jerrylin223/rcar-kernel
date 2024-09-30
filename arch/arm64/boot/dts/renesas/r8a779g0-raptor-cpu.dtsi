@@ -16,6 +16,7 @@
 
 	aliases {
 		serial0 = &hscif0;
+		serial3 = &hscif3;
 	};
 
 	chosen {
@@ -90,6 +91,12 @@
 		groups = "hscif0_data", "hscif0_ctrl";
 		function = "hscif0";
 	};
+
+	hscif3_pins: hscif3 {
+		groups = "hscif3_data", "hscif3_ctrl";
+		function = "hscif3";
+	};      
+	
 
 	scif_clk_pins: scif_clk {
 		groups = "scif_clk";
@@ -194,4 +201,12 @@
 	status = "okay";
 };
 
+&hscif3 {
+       pinctrl-0 = <&hscif3_pins>;
+       pinctrl-names = "default";
+
+       uart-has-rtscts;
+       /* Please use exclusively to the scif0 node */
+       status = "okay";
+};
 

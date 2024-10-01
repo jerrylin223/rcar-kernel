@@ -1,3 +1,4 @@
+#define MAX96712_REG1			0x01
 #define MAX96712_REG4			0x04
 #define MAX96712_REG5			0x05
 #define MAX96712_REG6			0x06

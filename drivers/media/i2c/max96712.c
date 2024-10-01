@@ -423,8 +423,8 @@ static int max96712_power(struct max96712_priv *priv, int on)
 
 	if (on) {
 		max96712_read(priv, en_reg, &val);
-		if (priv->dev_id == MAX96724_ID || priv->dev_id == MAX96724F_ID || priv->dev_id == MAX96724R_ID)
-			val &= 0xFE;		// GPIO_DIS=0(GPIO enable)
+		//~ if (priv->dev_id == MAX96724_ID || priv->dev_id == MAX96724F_ID || priv->dev_id == MAX96724R_ID)
+			val &= 0x7E;		// GPIO_DIS=0(GPIO enable) and Resistor 40K
 		val |= BIT(4);		// GPIO1=High=Camemra POC Protector ON
 		max96712_write_reg(priv, en_reg, val);
 	}
@@ -748,6 +748,7 @@ static int max96712_preinit(struct max96712_priv *priv)
 		max96712_write_reg(priv, 0x030C, 0x63);
 		max96712_write_reg(priv, 0x030D, 0x0C);
 	} else {
+        max96712_update_bits(priv, MAX96712_REG1, BIT(2), BIT(2)); // DIS_LOC_CC_P2
 		max96712_write_reg(priv, 0x0323, 0x84);
 		max96712_write_reg(priv, 0x0325, 0x0B);
 		max96712_write_reg(priv, 0x0326, 0x63);

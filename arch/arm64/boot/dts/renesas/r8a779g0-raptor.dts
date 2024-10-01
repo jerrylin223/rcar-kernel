@@ -460,6 +460,7 @@
 		<&canfd3_pins>, <&canfd4_pins>, <&canfd5_pins>,
 		<&canfd6_pins>, <&canfd7_pins>;
 		pinctrl-names = "default";
+		//renesas,no-can-fd;
 	status = "okay";
 
 	channel0 {
@@ -1293,6 +1294,13 @@
 	};
 };
 
+&i2c4 {
+       pinctrl-0 = <&i2c4_pins>;
+       pinctrl-names = "default";
+
+       status = "okay";
+       clock-frequency = <400000>;
+};
 
 /*
  * PCIe Function :
@@ -1318,10 +1326,12 @@
 	};
 };
 
+#define PCIE_2CH_2LANE 
+
 #if defined(PCIE_1CH_4LANE)
 /*** 1ch 4lane ***/
 &pciec0 {
-	reset-gpio = <&io_expander_a 0 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&U184 1 GPIO_ACTIVE_HIGH>;
 	num-lanes = <4>;
 	clocks = <&cpg CPG_MOD 624>, <&cpg CPG_MOD 625>;
 	clock-names = "pcie0_clk", "pcie1_clk";
@@ -1336,12 +1346,13 @@
 };
 #elif defined(PCIE_2CH_2LANE)
 /*** 2ch 2lane ***/
-&pciec1 {
-//	reset-gpio = <&io_expander_a 0 GPIO_ACTIVE_LOW>;
+&pciec0 {
+	reset-gpio = <&U184 1 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
-&pciec0 {
+&pciec1 {
+	reset-gpio = <&U184 0 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
@@ -1355,7 +1366,7 @@
 #else
 /*** 1ch 2lane ***/
 &pciec0 {
-//	reset-gpio = <&io_expander_a 0 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&U184 1 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 

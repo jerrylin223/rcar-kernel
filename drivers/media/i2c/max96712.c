@@ -29,6 +29,9 @@
 #define DEBUG_COLOR_PATTERN		0
 #define DEBUG_MBPS			200000000
 
+static unsigned int FSYNC_ON_OFF = 0x00;		/* 0x01: ON, 0x00: OFF */
+module_param_named(fsync_on_off, FSYNC_ON_OFF, int, 0644);
+
 struct max96712_source {
 	struct v4l2_async_subdev asd;
 	struct v4l2_subdev *sd;
@@ -78,6 +81,7 @@ struct max96712_priv {
 	struct max96712_source sources[MAX96712_NUM_GMSL];
 	struct v4l2_async_notifier notifier;
 
+	int fsync_period;
 	bool cphy_connection;
 	int dev_id;
 };
@@ -486,6 +490,34 @@ static int max96712_color_pattern(struct max96712_priv *priv)
 	return ret;
 }
 #endif
+
+static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
+{
+	printk("Start to FSYNC........\n");
+	/* Internal type FSYNC */
+	/* Master link: video 0 */
+	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00);   
+	
+	/* FS_LINK GPIO XTAL_TYPE*/
+	max96712_write_reg(priv, MAX96712_FSYNC_15, 0xCF);   
+	
+	/* 742.3 MHz / 30fps */
+	priv->fsync_period = 25000000;				         
+	max96712_write_reg(priv, MAX96712_FSYNC_5, (priv->fsync_period >>  0) & 0xFF); /* Fsync Period L */
+	max96712_write_reg(priv, MAX96712_FSYNC_6, (priv->fsync_period >>  8) & 0xFF); /* Fsync Period M */
+	max96712_write_reg(priv, MAX96712_FSYNC_7, (priv->fsync_period >> 16) & 0xFF); /* Fsync Period H */
+	
+	/* FSYNC_TX GPIO ID = 1 */
+	//max96712_write_reg(priv, MAX96712_FSYNC_17, 0x08); // ID = 1
+	max96712_write_reg(priv, MAX96712_FSYNC_17, 0x60); // ID = 12
+	
+	///* Enable GPIO_RX_EN on  Ser. MAX9295A side MFPX */
+	
+	//////////////////////
+	
+	/* Method: manual, Internal GMSL2 generator mode: 00, source of FSYNC: Des. */
+	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x04);   
+}
 
 static int max96712_enable(struct v4l2_subdev *sd, int enable)
 {
@@ -1034,6 +1066,9 @@ static void max96712_setup(struct max96712_priv *priv)
 	max96712_gmsl2_initial_setup(priv);
 	max96712_mipi_setup(priv);
 
+	if (FSYNC_ON_OFF == 0x01)
+		max96712_gmsl2_fsync_setup(priv);
+		
 	/* Start all cameras. */
 	for_each_source(priv, source) {
 		max96712_gmsl2_link_pipe_setup(priv, link);

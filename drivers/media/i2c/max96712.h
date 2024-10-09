@@ -66,6 +66,7 @@
 #define MAX_BACKTOP32(bank)		(MAX_BACKTOP_BASE(bank) + 0x1f)
 
 #define MAX96712_FSYNC_0		0x4a0
+#define MAX96712_FSYNC_2		0x4a2
 #define MAX96712_FSYNC_5		0x4a5
 #define MAX96712_FSYNC_6		0x4a6
 #define MAX96712_FSYNC_7		0x4a7

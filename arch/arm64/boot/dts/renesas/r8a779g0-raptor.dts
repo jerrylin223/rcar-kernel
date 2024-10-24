@@ -372,6 +372,10 @@
 		function = "canfd7";
 	};
 	
+#define MSIOF_SS_PIN_DISABLE
+
+#if defined(MSIOF_SS_PIN_ENABLE)	
+	
 	msiof1_pins: msiof1 {
 		groups = "msiof1_clk", "msiof1_rxd", "msiof1_txd", "msiof1_sync", "msiof1_ss1", "msiof1_ss2";
 		function = "msiof1";
@@ -381,6 +385,20 @@
 		groups = "msiof2_clk", "msiof2_rxd", "msiof2_txd", "msiof2_sync", "msiof2_ss1", "msiof2_ss2";
  		function = "msiof2";
  	};
+
+#elif defined(MSIOF_SS_PIN_DISABLE)
+
+   msiof1_pins: msiof1 {
+		   groups = "msiof1_clk", "msiof1_rxd", "msiof1_txd", "msiof1_sync";
+		   function = "msiof1";
+   };
+
+   msiof2_pins: msiof2 {
+		   groups = "msiof2_clk", "msiof2_rxd", "msiof2_txd", "msiof2_sync";
+		   function = "msiof2";
+   };
+#endif
+
  	
 	sound_pins: sound {
 		groups = "ssi_ctrl", "ssi_data";
@@ -1481,6 +1499,8 @@
  * SPI function : 
  * enable spi1 and spi2
  */
+#if defined(MSIOF_SS_PIN_ENABLE) 
+
 &msiof1 {
 	pinctrl-0 = <&msiof1_pins>;
 	pinctrl-names = "default";
@@ -1544,6 +1564,41 @@
 		spi-cpol;
 	};
 };
+
+#elif defined(MSIOF_SS_PIN_DISABLE)
+
+&msiof1 {
+       pinctrl-0 = <&msiof1_pins>;
+       pinctrl-names = "default";
+       
+       status = "okay";
+ 
+       slavedev {
+               compatible = "maker,slavedev";
+               reg = <0>;
+               spi-max-frequency = <16666666>;
+               spi-cpha;
+               spi-cpol;
+       };
+};
+
+&msiof2 {
+       pinctrl-0 = <&msiof2_pins>;
+       pinctrl-names = "default";
+
+       status = "okay";
+ 
+       slavedev {
+               compatible = "maker,slavedev";
+               reg = <0>;
+               spi-max-frequency = <16666666>;
+               spi-cpha;
+               spi-cpol;
+       };
+};
+
+#endif
+
 
 /*
  * Sound function : 

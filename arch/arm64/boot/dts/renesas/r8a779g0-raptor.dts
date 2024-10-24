@@ -15,6 +15,9 @@
 
 	aliases {
 		ethernet0 = &avb0;
+		ethernet1 = &avb1;
+		ethernet2 = &avb2;
+		ethernet3 = &tsn0;
 	};
 
 	reserved-memory {

@@ -494,30 +494,32 @@ static int max96712_color_pattern(struct max96712_priv *priv)
 
 static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
 {
-	printk("Start to FSYNC........\n");
 	/* Internal type FSYNC */
-	/* Master link: video 0 */
-	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00);   
+	/* Method: manual, Internal GMSL2 generator mode: 00, source of FSYNC: Des. */
+	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x04);  
 	
-	/* FS_LINK GPIO XTAL_TYPE*/
+	/* Turn off auto master link selection */
+	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00); 
+	
+	/* Disable overlap window */
+	max96712_write_reg(priv, MAX96712_FSYNC_10,  0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_11,  0x00); 
+
+	/* disable error threshold */
+	max96712_write_reg(priv, MAX96712_FSYNC_8,  0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_9,  0x00); 
+	
+	/* AUTO_FS_LINKS = 0, FS_USE_XTAL = 1, FS_LINK_[3:0] = 0*/
 	max96712_write_reg(priv, MAX96712_FSYNC_15, 0xCF);   
 	
-	/* 742.3 MHz / 30fps */
-	priv->fsync_period = 25000000;				         
+	/* fsync_period = 25 MHz / 30fps */		   
+	priv->fsync_period = 25000000 / 30;	      
 	max96712_write_reg(priv, MAX96712_FSYNC_5, (priv->fsync_period >>  0) & 0xFF); /* Fsync Period L */
 	max96712_write_reg(priv, MAX96712_FSYNC_6, (priv->fsync_period >>  8) & 0xFF); /* Fsync Period M */
 	max96712_write_reg(priv, MAX96712_FSYNC_7, (priv->fsync_period >> 16) & 0xFF); /* Fsync Period H */
-	
-	/* FSYNC_TX GPIO ID = 1 */
-	//max96712_write_reg(priv, MAX96712_FSYNC_17, 0x08); // ID = 1
-	max96712_write_reg(priv, MAX96712_FSYNC_17, 0x60); // ID = 12
-	
-	///* Enable GPIO_RX_EN on  Ser. MAX9295A side MFPX */
-	
-	//////////////////////
-	
-	/* Method: manual, Internal GMSL2 generator mode: 00, source of FSYNC: Des. */
-	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x04);   
+
+	/* FSYNC_TX GPIO ID = 8 */
+	max96712_write_reg(priv, MAX96712_FSYNC_17, 0x40);
 }
 
 static int max96712_enable(struct v4l2_subdev *sd, int enable)

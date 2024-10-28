@@ -742,8 +742,6 @@
 
 				u28_max96789_in: endpoint@0 {
 					reg = <0>;
-
-					data-lanes = <1 2 3 4>;
 					remote-endpoint = <&dsi0_out>;
 				};
 			};
@@ -785,8 +783,6 @@
 
 				u181_max96789_in: endpoint@0 {
 					reg = <0>;
-
-					data-lanes = <1 2 3 4>;
 					remote-endpoint = <&dsi1_out>;
 				};
 			};

@@ -47,32 +47,32 @@ static void DEBUG_INFO(struct max96789_priv *priv){
 	unsigned int val;
 
 	regmap_read(priv->regmap, MAX96789_PWR0, &val);
-	dev_dbg(priv->dev, "[%s (%d)]: vdd info = %d\n",
-		__func__, __LINE__, val);
+	dev_dbg(priv->dev, "[%s]: vdd info = %d\n",
+		__func__, val);
 	
 	regmap_read(priv->regmap, MAX96789_REG15, &val);
-	dev_dbg(priv->dev, "[%s (%d)]: link_status = %d\n",
-		__func__, __LINE__, val);
+	dev_dbg(priv->dev, "[%s]: link_status = %d\n",
+		__func__, val);
 	
 	regmap_read(priv->regmap, MAX96789_VTX_X(1), &val);
 	if (val & PCLKDET_VTX)
-		dev_dbg(priv->dev, "[%s (%d)]: PCLK detected\n",
-			 __func__, __LINE__);
+		dev_dbg(priv->dev, "[%s]: PCLK detected\n",
+			 __func__);
 	else
-		dev_dbg(priv->dev, "[%s (%d)]: PCLK not detected, pclk_det = %d\n",
-			 __func__, __LINE__, val);	
+		dev_dbg(priv->dev, "[%s]: PCLK not detected, pclk_det = %d\n",
+			 __func__, val);	
 
 	regmap_read(priv->regmap, MAX96789_HS_VS_X, &val);
 	if ((val & DE_DET_X) && (val & VS_DET_X) && (val & HS_DET_X))
-		dev_dbg(priv->dev, "[%s (%d)]: HS VS DE detected\n",
-			__func__, __LINE__);
+		dev_dbg(priv->dev, "[%s]: HS VS DE detected\n",
+			__func__);
 	else
-		dev_dbg(priv->dev, "[%s (%d)]: HS VS DE are not detected hs_vs_det = %d\n",
-			 __func__, __LINE__, val);
+		dev_dbg(priv->dev, "[%s]: HS VS DE are not detected hs_vs_det = %d\n",
+			 __func__, val);
 	
 	regmap_read(priv->regmap, MAX96789_MIPI_DSI32, &val);
-	dev_dbg(priv->dev, "[%s (%d)]: dsi_contr_0_status = %d\n",
-		__func__, __LINE__, val);
+	dev_dbg(priv->dev, "[%s]: dsi_contr_0_status = %d\n",
+		__func__, val);
 }
  
  
@@ -133,7 +133,7 @@ static int max96789_patgen(struct max96789_priv *priv, int pat_flags)
 	max96789_write_n(priv, MAX96789_VTX_X(37), 3, 0x505050);
 	
 	/* Select pattern : 0x02 is gradient, 0x01 is chessboard, 
-	 * 0x00 is pattern generator disabled - use video from the serializer input */
+	 * 0x00 is pattern generator disabled - use output from the DSI input */
 	regmap_write(priv->regmap, MAX96789_VTX_X(29), pat_flags == 1 ? 0x02 : 0x01);
 
 	return ret;
@@ -207,12 +207,16 @@ static void max96789_set_link_i2c(struct max96789_priv *priv)
 	clk_lut = max96789_i2c_clk_lut;
 	clk_lut_size = ARRAY_SIZE(max96789_i2c_clk_lut);
 
-	for(i = 0; i < clk_lut_size; i++)
-		if(clk_lut[i] > t.bus_freq_hz)
+	for (i = 0; i < clk_lut_size; i++)
+		if (clk_lut[i] > t.bus_freq_hz)
 			break;
 
-	if(i == 0) {
-		dev_warn(priv->dev, "i2c-bus clk-freq too low, use 9.92Kbps as bit-rate\n");
+	/*
+	 * 96789 <-----> mux1 <---> mux2 <---> muxn <---> i2c bus
+	 * default rate
+	 */
+	if (i == 0) {
+		dev_dbg(priv->dev, "i2c-bus clk-freq too low, use 9.92Kbps as bit-rate\n");
 	} else
 		i--;
 
@@ -225,7 +229,7 @@ static void max96789_set_link_i2c(struct max96789_priv *priv)
 			   I2C_0_SLV_SH, slv_sh);
 }
 
-static int max96789_parse_gmsl_link_cfg(struct max96789_priv *priv)
+static void max96789_parse_gmsl_link_cfg(struct max96789_priv *priv)
 {
 	struct device *dev = priv->dev;
 	unsigned int link_type[GMSL_MAX_LINKS], cab_sel[GMSL_MAX_LINKS];
@@ -237,12 +241,12 @@ static int max96789_parse_gmsl_link_cfg(struct max96789_priv *priv)
 	ret = of_property_read_u32_array(dev->of_node, "maxim,gmsl-link-type", 
 					 link_type, GMSL_MAX_LINKS);	
 
-	if(ret) {
-		dev_dbg(dev, "gmsl-link-type are not defined or invalid, use cfg pin default\n");
+	if (ret) {
+		dev_dbg(dev, "gmsl-link-type is invalid, use cfg pin default\n");
 		regmap_read(priv->regmap, MAX96789_REG4, &val);
 		priv->gmsl_link_types[GMSL_LINK_A] = !!(val & GMSL2_A);
 		priv->gmsl_link_types[GMSL_LINK_B] = !!(val & GMSL2_B);
-	}else {
+	} else {
 		priv->gmsl_link_types[GMSL_LINK_A] = !!(link_type[GMSL_LINK_A] & 0x3);
 		priv->gmsl_link_types[GMSL_LINK_B] = !!(link_type[GMSL_LINK_B] & 0x3);	
 	}
@@ -250,54 +254,43 @@ static int max96789_parse_gmsl_link_cfg(struct max96789_priv *priv)
 	/* decide gmsl cable_sel */
 	ret = of_property_read_u32_array(dev->of_node, "maxim,gmsl-cable-sel",
 					 cab_sel, GMSL_MAX_LINKS);
-	if(ret) {
-		dev_dbg(dev, "gmsl-cable-sel not defined or invalid, use cfg pin default\n");
+	if (ret) {
+		dev_dbg(dev, "gmsl-cable-sel is invalid, use cfg pin default\n");
 		regmap_read(priv->regmap, MAX96789_CTRL1, &val);
 		priv->gmsl_cab_sel[GMSL_LINK_A] = !!(val & CXTP_A);
 		priv->gmsl_cab_sel[GMSL_LINK_B] = !!(val & CXTP_B);
-	}else {
+	} else {
 		priv->gmsl_cab_sel[GMSL_LINK_A] = cab_sel[GMSL_LINK_A] & 0x1;
 		priv->gmsl_cab_sel[GMSL_LINK_B] = cab_sel[GMSL_LINK_B] & 0x1;
 	}
 
 	/* decide gmsl_link_rate */
-	ret = of_property_read_u32(dev->of_node, "maxim,gmsl-link-rate",
+	ret = of_property_read_u32(dev->of_node, "maxim,gmsl2-link-rate",
 				   &link_rate);
-	if(ret || link_rate != 3 || link_rate != 6) {
-		dev_dbg(dev, "gmsl_link_rate not defined or invalid, use cfg pin default\n");
+	if (ret || (link_rate != 3 && link_rate != 6)) {
+		dev_dbg(dev, "gmsl_link_rate is invalid, use cfg pin default\n");
 		regmap_read(priv->regmap, MAX96789_REG1, &val);
 		priv->gmsl_link_rate = (val & TX_RATE_MASK) >> TX_RATE_SHIFT;
-	}else
+	} else
 		priv->gmsl_link_rate = (link_rate & 0x7) / 3;
 	
 
 	/* decide link cfg */
-	if(of_get_property(dev->of_node, "maxim,gmsl2-dual-link", NULL))
+	// TODO: Doesn't support dual-link now
+	if (of_get_property(dev->of_node, "maxim,gmsl2-dual-link", NULL))
 		priv->gmsl2_dual_link = true;
 	else
 		priv->gmsl2_dual_link = false;
 
-	/* 
-	 * decide how many gmsl endpoint dev linked
-	 * port 0 is for dsi, while 1/2 link to GMSL 
-	 */
-	for(port = 1; port < GMSL_MAX_LINKS + 1; port++) {
+	for (port = 1; port < GMSL_MAX_LINKS + 1; port++) {
 		node = of_graph_get_remote_node(dev->of_node, port, 0);
-		if(!of_device_is_available(node)) {
-			dev_dbg(dev, "skipping disabled port\n");
+		if (!of_device_is_available(node)) {
+			priv->gmsl_link_mask[port - 1] = TYPE_DEV_UNKNOWN;
+			dev_dbg(dev, "Port %c might not exist or is a unknown dev\n", port + 64);
 			continue;
 		}
-
-		priv->gmsl_link_mask[port - 1] = true;
-		priv->gmsl_links_used++;
+		priv->gmsl_link_mask[port - 1] = TYPE_DEV_FIXED;
 	}
-	
-	if(!priv->gmsl_links_used) {
-		dev_err(priv->dev, "%s: no gmsl linked to this device\n", __func__);
-		return -ENODEV;
-	}
-	
-	return 0;
 }
 
 static void max96789_set_gmsl_link_cfg(struct max96789_priv *priv)
@@ -307,12 +300,14 @@ static void max96789_set_gmsl_link_cfg(struct max96789_priv *priv)
 	
 	/* Link type, Link number */
 	mask = GMSL2_A | GMSL2_B | LINK_EN_A | LINK_EN_B;
-	if(priv->gmsl_links_used == 2 || priv->gmsl2_dual_link)
+	if (priv->gmsl_links_used == 2 || priv->gmsl2_dual_link)
 		regmap_update_bits(priv->regmap, MAX96789_REG4, mask, mask);
-	else if(priv->gmsl_link_mask[GMSL_LINK_A])
+	else if (priv->gmsl_link_mask[GMSL_LINK_A])
 		regmap_update_bits(priv->regmap, MAX96789_REG4, mask, GMSL2_A | LINK_EN_A);
-	else if(priv->gmsl_link_mask[GMSL_LINK_B])
+	else if (priv->gmsl_link_mask[GMSL_LINK_B])
 		regmap_update_bits(priv->regmap, MAX96789_REG4, mask, GMSL2_B | LINK_EN_B);
+	else
+		regmap_update_bits(priv->regmap, MAX96789_REG4, mask, GMSL2_A | LINK_EN_A);
 
 	/* Cable type */
 	mask = CXTP_A | CXTP_B;
@@ -326,33 +321,38 @@ static void max96789_set_gmsl_link_cfg(struct max96789_priv *priv)
 
 	/* Link cfg + Reset oneshot */
 	mask = LINK_CFG_MASK | AUTO_LINK | RESET_ONESHOT;
-	if(priv->gmsl_links_used == 2)
+	if (priv->gmsl_links_used == 2)
 		regmap_update_bits(priv->regmap,
 				   MAX96789_CTRL0, mask,
 				   LINK_CFG_SPLITTER | RESET_ONESHOT);
-	else if(priv->gmsl2_dual_link)
+	else if (priv->gmsl2_dual_link)
 		regmap_update_bits(priv->regmap,
 				   MAX96789_CTRL0, mask,
 				   LINK_CFG_DUAL | RESET_ONESHOT);
-	else if(priv->gmsl_link_mask[GMSL_LINK_A])
+	else if (priv->gmsl_link_mask[GMSL_LINK_A])
 		regmap_update_bits(priv->regmap,
 				   MAX96789_CTRL0, mask,
 				   LINK_CFG_SINGLE_A | RESET_ONESHOT);
-	else if(priv->gmsl_link_mask[GMSL_LINK_B])
+	else if (priv->gmsl_link_mask[GMSL_LINK_B])
 		regmap_update_bits(priv->regmap,
 				   MAX96789_CTRL0, mask,
 				   LINK_CFG_SINGLE_B | RESET_ONESHOT);
+	else
+		regmap_update_bits(priv->regmap,
+		                   MAX96789_CTRL0, mask,
+				   LINK_CFG_SINGLE_A | RESET_ONESHOT);
 
 	ret = regmap_read_poll_timeout(priv->regmap, MAX96789_INTR7, val,
-				       (val & LOCK_A) && (val & LOCK_B), 500, 300000);
-	if(ret)
-		dev_err(priv->dev, "%s: GMSL links not locked 0x1F=%d\n", __func__, val);
+				       (val & LOCK_A) || (val & LOCK_B), 500, 300000);
+	if (ret)
+		dev_err(priv->dev, "Both GMSL links UNLOCK 0x1F=0x%2x\n", val);
 }
 
 static int max96789_dev_init(struct max96789_priv *priv)
 {
-	int err;
-	unsigned int val;
+	struct device *dev = priv->dev;
+	int port, err;
+	unsigned int val, mask;
 
 	/*
 	 * According to datasheet:
@@ -365,18 +365,29 @@ static int max96789_dev_init(struct max96789_priv *priv)
 	 * 	    system to ensure robust operation
 	 */
 	err = regmap_update_bits(priv->regmap, 0x302, 0x07, 0x10);
-	if(err)
-		return dev_err_probe(priv->dev, err,
-				     "%s: Cannot increase voltage to clock system\n",
-				      __func__);
+	if (err) {
+		//return dev_err_probe(priv->dev, err,
+		//		     "Cannot increase voltage to clock system\n");
+		dev_err(priv->dev, "Cannot increase voltage to clock system\n");
+		return -EPROBE_DEFER;
+	}
 
 	/* ensure gmsl LOCKED asserted before setting cfg */
-	err = regmap_read_poll_timeout(priv->regmap, MAX96789_CTRL3, val,
-				       val & LOCKED, 500, 300000);
-	if(err)
-		return dev_err_probe(priv->dev, err,
-				     "%s: no GMSL link locked, CTRL3 = 0x%02x\n",
-				      __func__, val);
+	mask = LINK_CFG_MASK | AUTO_LINK | RESET_ONESHOT;
+	regmap_update_bits(priv->regmap, MAX96789_CTRL0, mask,
+			   LINK_CFG_SPLITTER | RESET_ONESHOT);
+
+	for (port = 1; port < GMSL_MAX_LINKS + 1; port++) {
+		err = regmap_read_poll_timeout(priv->regmap, MAX96789_INTR7, val,
+					       val & BIT(port + 2), 500, 300000);
+
+		if (err) {
+			priv->gmsl_link_mask[port - 1] = TYPE_NO_DEV;
+			dev_dbg(dev, "GMSL2 phy%c UNLOCK\n", (port + 64));
+			continue;
+		}
+		priv->gmsl_links_used++;
+	}
 
 	max96789_set_gmsl_link_cfg(priv);
 
@@ -496,45 +507,43 @@ static int max96789_bridge_attach(struct drm_bridge *bridge,
 						 };
 	unsigned int link;
 
-	dev_info(dev, "%s: entered drm bridge attach\n", __func__);
+	dev_dbg(dev, "Entered drm bridge attach\n");
 
-	for(link = GMSL_LINK_A; link < GMSL_MAX_LINKS; link++){
-		if(!priv->gmsl_link_mask[link])
+	for (link = GMSL_LINK_A; link < GMSL_MAX_LINKS; link++){
+		if (priv->gmsl_link_mask[link] == TYPE_NO_DEV ||
+		    priv->gmsl_link_mask[link] == TYPE_DEV_UNKNOWN)
 			continue;
 	
 		next_bridge[link] = devm_drm_of_get_bridge(dev, dev->of_node, link + 1, 0);
 
-		if(IS_ERR(next_bridge[link]))
+		if (IS_ERR(next_bridge[link]))
 			return dev_err_probe(dev, PTR_ERR(next_bridge[link]),
-					     "%s: empty bridge node fetched\n", __func__);
+					     "Failed to fetched the downlink node\n");
 
 		priv->next_bridge[link] = next_bridge[link];
 	}
 
 	host = of_find_mipi_dsi_host_by_node(priv->host_node);
 	if (!host) {
-		dev_err(dev, "%s: failed to find dsi host\n", __func__);
+		dev_err(dev, "Failed to find dsi host\n");
 		return -ENODEV;
 	}
 
 	dsi = mipi_dsi_device_register_full(host, &info);
 	if (IS_ERR(dsi)) 
 		return dev_err_probe(dev, PTR_ERR(dsi),
-				     "%s: failed to create dsi device\n", __func__);
+				     "Failed to register dsi device\n");
 	
-
-	/* lane can be parsed from DT */
-	dsi->lanes = 4;
+	dsi->lanes = priv->data_lanes;
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO;
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0)
-		return dev_err_probe(dev, ret,
-				     "%s: failed to attach dsi to host\n", __func__);
+		return dev_err_probe(dev, ret, "Failed to attach dsi\n");
 
 	/* -------NOTICE---------
-	 * Tricky use case:
+	 * Tricky case:
 	 * 	Test for attaching both deserializer into encoder's bridge list
 	 *
 	 * Drm bridge is a daisy-chain architecture, while Serdes treats the
@@ -542,29 +551,31 @@ static int max96789_bridge_attach(struct drm_bridge *bridge,
 	 * this linear drm bridge structure or may have some side effect
 	 * to check in a further validation.
 	 */	
-	for(link = GMSL_LINK_A; link < GMSL_MAX_LINKS ; link++) {
-		if(!priv->next_bridge[link])
+	for (link = GMSL_LINK_A; link < GMSL_MAX_LINKS ; link++) {
+		if (!priv->next_bridge[link])
 			continue;
 		ret = drm_bridge_attach(bridge->encoder,
 					priv->next_bridge[link], &priv->bridge,
 					flags | DRM_BRIDGE_ATTACH_NO_CONNECTOR);
 
-		if(ret < 0) {
-			dev_err(dev,"%s: Bridge attach failed\n", __func__);
+		if (ret < 0) {
+			dev_err(dev, "Failed to attach DRM bridge\n");
 			goto mipi_dsi_unregister;
 		}
 	}
-
 	/*-------------------------------------------------------------*/
+	
+	priv->bridge.type = (priv->gmsl_links_used) ? 
+			    DRM_MODE_CONNECTOR_DSI : DRM_MODE_CONNECTOR_VIRTUAL;
 
-	if(flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)
+	if (flags & DRM_BRIDGE_ATTACH_NO_CONNECTOR)
 		return 0;
 	
 	priv->connector = drm_bridge_connector_init(priv->bridge.dev, priv->bridge.encoder);
-	
+
 	if (IS_ERR(priv->connector)) {
 		ret = PTR_ERR(priv->connector);
-		dev_err(dev, "%s: Failed to initialize connector with drm\n", __func__);
+		dev_err(dev, "Failed to initialize the connector\n");
 		goto mipi_dsi_unregister;
 	}	
 
@@ -585,15 +596,13 @@ static void max96789_atomic_bridge_enable(struct drm_bridge *bridge,
 	enum max96789_video_pipe_id vpip = VIDEO_PIPE_X;
 	int mask, val, shift;
 
-	dev_info(priv->dev, "%s: entered enable func\n", __func__);
+	dev_dbg(priv->dev, "entered enable func\n");
 	gpiod_set_value_cansleep(priv->gpiod_pwdn, 1);
-
-	regmap_write(priv->regmap, 0x1A, 0x08);
 	
 	if (DEBUG_COLOR_PATTERN == 1)
 		max96789_patgen(priv, SER_PATTERN_SEL);
 
-	DEBUG_INFO(priv);
+	//DEBUG_INFO(priv);
 
 	/* 0x0332: MIPI_RX2 */
 	val = priv->dsi_id == DSI_PORT_A ? 0x4E : 0xE4;
@@ -609,7 +618,7 @@ static void max96789_atomic_bridge_enable(struct drm_bridge *bridge,
 	val = priv->dsi_id == DSI_PORT_A ? PHY_CFG_ONLYA: PHY_CFG_ONLYB;
 	regmap_update_bits(priv->regmap, MAX96789_MIPI_RX0, PHY_CONFIG, val);
 	
-	if(priv->gmsl_links_used ==2 && !priv->gmsl2_dual_link) {
+	if (priv->gmsl_links_used ==2 && !priv->gmsl2_dual_link) {
 		max96789_dsi_cfg_for_split(priv);
 		return;
 	}
@@ -638,6 +647,7 @@ static void max96789_atomic_bridge_enable(struct drm_bridge *bridge,
 	/* 0x0053/0x0057/0x005B/0x005F: TX3 CFGV VIDEO_X/Y/Z/U */
 	regmap_write(priv->regmap, MAX96789_TX3(vpip), 0x10);
 
+	/* Seems unused */
 	max96789_video_timing(priv);
 
 	/* 0x0002: REG2 */
@@ -658,8 +668,13 @@ static int max96789_bridge_get_modes(struct drm_bridge *bridge,
 {
 	int count;
 	count = drm_add_modes_noedid(connector, 8192, 8192);
-	drm_set_preferred_mode(connector, 1280, 768);
+	drm_set_preferred_mode(connector, 1920, 1080);
 	return count;
+}
+
+static enum drm_connector_status max96789_bridge_detect(struct drm_bridge *bridge)
+{
+	return connector_status_connected;
 }
 
 static const struct drm_bridge_funcs max96789_bridge_funcs = {
@@ -672,48 +687,45 @@ static const struct drm_bridge_funcs max96789_bridge_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
 
 	.get_modes = max96789_bridge_get_modes,
+	.detect = max96789_bridge_detect,
 };
 
 static int max96789_parse_dt(struct max96789_priv *priv)
 {
 	struct device *dev = priv->dev;
-	struct device_node *dsi_node;
-	int data_lanes, ep, ret;
+	struct device_node *endpoint, *remote_ep;
+	int data_lanes, port_id;
 
-	/* 
-	 * get dsi node 
-	 * max96789 is capable to use both dsi port
-	 * Driver only use either dsi port as input at this stage
-	 */
-	for(ep = DSI_PORT_A; ep < DSI_MAX_PORTS; ep++) {
-		dsi_node = of_graph_get_endpoint_by_regs(dev->of_node, 0, ep);
-		if(dsi_node) {
-			priv->host_node = of_graph_get_remote_node(priv->dev->of_node, 0, ep);
-			priv->dsi_id = ep;
+	/* Driver use either dsi port as input now */
+	for (port_id = DSI_PORT_A; port_id < DSI_MAX_PORTS; port_id++) {
+		endpoint = of_graph_get_endpoint_by_regs(dev->of_node, 0, port_id);
+		if (endpoint) {
+			priv->host_node = of_graph_get_remote_port_parent(endpoint);
+			priv->dsi_id = port_id;
 			break;
 		}
 	}
 
-	if(ep == DSI_MAX_PORTS) {
-		dev_err(dev, "no dsi port links to max96789 in DT\n");
-		return -ENXIO;
+	if (port_id == DSI_MAX_PORTS || !priv->host_node) {
+		dev_err(dev, "no dsi node linked to port 0\n");
+		return -EINVAL;
 	}
 
-	/* kernel 5.10 doesn't have drm_of_get_data_lanes_count() to use */
-	data_lanes = of_property_count_u32_elems(dsi_node, "data-lanes");
+	remote_ep = of_graph_get_remote_endpoint(endpoint);
+	data_lanes = of_property_count_u32_elems(remote_ep, "data-lanes");
 
-	if(data_lanes < 0 || data_lanes < 1 || data_lanes > 4) {
-		dev_err(dev, "invalid data-lanes property for dsi ep %d\n",
+	if (data_lanes < 1 || data_lanes > 4) {
+		data_lanes = 4;	
+		dev_dbg(dev, "data-lanes is incorrect in port%d, sets to 4 by default\n",
 			priv->dsi_id);
-		return -EINVAL;
 	}
 
 	priv->data_lanes = data_lanes;
 
-	ret = max96789_parse_gmsl_link_cfg(priv);
-	
-	if(ret)
-		return ret;
+	max96789_parse_gmsl_link_cfg(priv);
+
+	of_node_put(remote_ep);
+	of_node_put(endpoint);
 
 	return 0;
 }
@@ -724,28 +736,28 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	int ret;
 
-	dev_info(dev, "%s: entered probe func\n", __func__);
+	dev_info(dev, "entered probe func\n");
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
-	if(!priv)
+	if (!priv) 
 		return -ENOMEM;
 
 	priv->dev = dev;
 
 	priv->regmap = devm_regmap_init_i2c(client, &max96789_i2c_regmap);
-	if(IS_ERR(priv->regmap))
+	if (IS_ERR(priv->regmap))
 		return dev_err_probe(priv->dev, PTR_ERR(priv->regmap),
-			       	     "failed to init i2c regmap\n");
+			       	     "Failed to init i2c regmap\n");
 
 	priv->gpiod_pwdn = devm_gpiod_get_optional(&client->dev, "enable",
 						   GPIOD_OUT_HIGH);
-	if(IS_ERR(priv->gpiod_pwdn))
+	if (IS_ERR(priv->gpiod_pwdn))
 		return dev_err_probe(priv->dev, PTR_ERR(priv->gpiod_pwdn),
-				     "failed to request pwdn gpio\n");
+				     "Failed to request pwdn gpio\n");
 
 	gpiod_set_consumer_name(priv->gpiod_pwdn, "max96789-pwdn");
 
-	if(priv->gpiod_pwdn)
+	if (priv->gpiod_pwdn)
 		usleep_range(4000, 5000);
 
 	priv->client = client;
@@ -753,32 +765,43 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, priv);
 
 	ret = max96789_parse_dt(priv);
-	if(ret < 0)
+	if (ret < 0) {
 		return ret;
+	}
 
 	priv->bridge.driver_private = priv;
 	priv->bridge.funcs = &max96789_bridge_funcs;
 	priv->bridge.of_node = priv->dev->of_node;
-	priv->bridge.type = DRM_MODE_CONNECTOR_VIRTUAL;
 	priv->bridge.ops = DRM_BRIDGE_OP_MODES;
 		
 	drm_bridge_add(&priv->bridge);
 
+	//TODO: This control port isn't implemented
 	ret = device_create_file(dev, &dev_attr_dual_view);
 	if (ret) {
-		dev_err(dev, "failed to create dual view controll sysfs file %d\n", ret);
+		dev_err(dev, "Failed to create dual view control sysfs file: ret=%d\n", ret);
 		return ret;
 	}
 	
-	return max96789_dev_init(priv);
+	ret = max96789_dev_init(priv);
+	if(ret)
+		goto error_probe_defer;
+
+	return 0;
+
+error_probe_defer:
+	of_node_put(priv->host_node);
+	device_remove_file(dev, &dev_attr_dual_view);
+	drm_bridge_remove(&priv->bridge);
+	return ret;
 }
 
 static int max96789_bridge_remove(struct i2c_client *client)
 {	
 	struct max96789_priv *priv = i2c_get_clientdata(client);
 
+	of_node_put(priv->host_node);
 	regmap_exit(priv->regmap);
-
 	drm_bridge_remove(&priv->bridge);
 
 	return 0;

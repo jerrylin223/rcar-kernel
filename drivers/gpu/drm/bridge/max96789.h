@@ -185,6 +185,12 @@ enum max96789_gmsl_link_type {
 	TYPE_GMSL2,
 };
 
+enum max96789_gmsl_dev_type {
+	TYPE_NO_DEV,
+	TYPE_DEV_UNKNOWN,
+	TYPE_DEV_FIXED,
+};
+
 enum max96789_gmsl_link_rate {
 	GMSL2_RATE_3G,
 	GMSL2_RATE_6G,
@@ -219,7 +225,7 @@ struct max96789_priv {
 	
 	/* gmsl param */
 	unsigned int gmsl_links_used;
-	bool gmsl_link_mask[GMSL_MAX_LINKS];
+	enum max96789_gmsl_dev_type	gmsl_link_mask[GMSL_MAX_LINKS];
 	enum max96789_gmsl_link_type	gmsl_link_types[GMSL_MAX_LINKS];
 	enum max96789_gmsl_link_rate 	gmsl_link_rate;
 	bool gmsl2_dual_link;

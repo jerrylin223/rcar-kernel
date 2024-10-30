@@ -441,6 +441,7 @@
 	status = "okay";
 		
 	fixed-link {
+        virtual-id = <0x14>;
 		speed = <1000>;
 		full-duplex;
 	};
@@ -457,6 +458,7 @@
 	status = "okay";
 		
 	fixed-link {
+        virtual-id = <0x15>;
 		speed = <1000>;
 		full-duplex;
 	};

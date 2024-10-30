@@ -18,6 +18,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/of_mdio.h>
 #include <linux/gpio/consumer.h>
 #include <linux/idr.h>
 #include <linux/netdevice.h>
@@ -74,6 +75,7 @@ static int fixed_mdio_read(struct mii_bus *bus, int phy_addr, int reg_num)
 {
 	struct fixed_mdio_bus *fmb = bus->priv;
 	struct fixed_phy *fp;
+    struct mii_bus *mac_mii_bus;
 
 	list_for_each_entry(fp, &fmb->phys, node) {
 		if (fp->addr == phy_addr) {
@@ -94,12 +96,26 @@ static int fixed_mdio_read(struct mii_bus *bus, int phy_addr, int reg_num)
 		}
 	}
 
+    mac_mii_bus = of_mdio_find_bus(bus->parent->of_node);
+    if(mac_mii_bus)
+    {
+        return mac_mii_bus->read(mac_mii_bus, phy_addr, reg_num);
+    }
+
 	return 0xFFFF;
 }
 
 static int fixed_mdio_write(struct mii_bus *bus, int phy_addr, int reg_num,
 			    u16 val)
 {
+    struct mii_bus *mac_mii_bus;
+
+    mac_mii_bus = of_mdio_find_bus(bus->parent->of_node);
+    if(mac_mii_bus)
+    {
+        mac_mii_bus->write(mac_mii_bus, phy_addr, reg_num, val);
+    }
+
 	return 0;
 }
 
@@ -230,6 +246,8 @@ static struct phy_device *__fixed_phy_register(unsigned int irq,
 {
 	struct fixed_mdio_bus *fmb = &platform_fmb;
 	struct phy_device *phy;
+    struct device_node *fixed_link_node;
+    u32 addr = 0;
 	int phy_addr;
 	int ret;
 
@@ -244,7 +262,21 @@ static struct phy_device *__fixed_phy_register(unsigned int irq,
 	}
 
 	/* Get the next available PHY address, up to PHY_MAX_ADDR */
-	phy_addr = ida_simple_get(&phy_fixed_ida, 0, PHY_MAX_ADDR, GFP_KERNEL);
+
+    fixed_link_node = of_find_node_by_name(np, "fixed-link");
+    if (fixed_link_node)
+    {
+        ret = of_property_read_u32(fixed_link_node, "virtual-id", &addr);
+        if(!ret)
+        {
+            if(addr > 31)
+            {
+                addr = 31;
+            }
+        }
+    }
+
+	phy_addr = ida_simple_get(&phy_fixed_ida, addr, PHY_MAX_ADDR, GFP_KERNEL);
 	if (phy_addr < 0)
 		return ERR_PTR(phy_addr);
 

@@ -18,17 +18,13 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/of_mdio.h>
 #include <linux/gpio/consumer.h>
 #include <linux/idr.h>
 #include <linux/netdevice.h>
 #include <linux/linkmode.h>
 
 #include "swphy.h"
-
-struct fixed_mdio_bus {
-	struct mii_bus *mii_bus;
-	struct list_head phys;
-};
 
 struct fixed_phy {
 	int addr;
@@ -74,6 +70,7 @@ static int fixed_mdio_read(struct mii_bus *bus, int phy_addr, int reg_num)
 {
 	struct fixed_mdio_bus *fmb = bus->priv;
 	struct fixed_phy *fp;
+    struct mii_bus *mac_mii_bus;
 
 	list_for_each_entry(fp, &fmb->phys, node) {
 		if (fp->addr == phy_addr) {
@@ -94,12 +91,33 @@ static int fixed_mdio_read(struct mii_bus *bus, int phy_addr, int reg_num)
 		}
 	}
 
+    if(fmb->bypass_mii_bus && fmb->mac_dev)
+    {
+        mac_mii_bus = of_mdio_find_bus(fmb->mac_dev->of_node);
+        if(mac_mii_bus)
+        {
+            return mac_mii_bus->read(mac_mii_bus, phy_addr, reg_num);
+        }
+    }
+
 	return 0xFFFF;
 }
 
 static int fixed_mdio_write(struct mii_bus *bus, int phy_addr, int reg_num,
 			    u16 val)
 {
+    struct fixed_mdio_bus *fmb = bus->priv;
+    struct mii_bus *mac_mii_bus;
+
+    if(fmb->bypass_mii_bus && fmb->mac_dev)
+    {
+        mac_mii_bus = of_mdio_find_bus(fmb->mac_dev->of_node);
+        if(mac_mii_bus)
+        {
+            return mac_mii_bus->write(mac_mii_bus, phy_addr, reg_num, val);
+        }
+    }
+    
 	return 0;
 }
 
@@ -232,6 +250,9 @@ static struct phy_device *__fixed_phy_register(unsigned int irq,
 	struct phy_device *phy;
 	int phy_addr;
 	int ret;
+    struct device_node *fixed_link_node;
+    u32 addr = 0;
+    bool bypass_mii_bus = false;
 
 	if (!fmb->mii_bus || fmb->mii_bus->state != MDIOBUS_REGISTERED)
 		return ERR_PTR(-EPROBE_DEFER);
@@ -244,7 +265,21 @@ static struct phy_device *__fixed_phy_register(unsigned int irq,
 	}
 
 	/* Get the next available PHY address, up to PHY_MAX_ADDR */
-	phy_addr = ida_simple_get(&phy_fixed_ida, 0, PHY_MAX_ADDR, GFP_KERNEL);
+    fixed_link_node = of_find_node_by_name(np, "fixed-link");
+    if (fixed_link_node)
+    {
+        ret = of_property_read_u32(fixed_link_node, "virtual-id", &addr);
+        if(!ret)
+        {
+            if(addr > 31)
+            {
+                addr = 31;
+            }
+            bypass_mii_bus = true;
+        }
+    }
+	phy_addr = ida_simple_get(&phy_fixed_ida, addr, PHY_MAX_ADDR, GFP_KERNEL);
+
 	if (phy_addr < 0)
 		return ERR_PTR(phy_addr);
 
@@ -272,7 +307,8 @@ static struct phy_device *__fixed_phy_register(unsigned int irq,
 	of_node_get(np);
 	phy->mdio.dev.of_node = np;
 	phy->is_pseudo_fixed_link = true;
-
+    phy->fixed_link_bypass_mii_bus = bypass_mii_bus;
+    
 	switch (status->speed) {
 	case SPEED_1000:
 		linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Half_BIT,

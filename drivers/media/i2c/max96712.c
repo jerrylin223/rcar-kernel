@@ -32,6 +32,9 @@
 static unsigned int FSYNC_ON_OFF = 0x00;		/* 0x01: ON, 0x00: OFF */
 module_param_named(fsync_on_off, FSYNC_ON_OFF, int, 0644);
 
+static unsigned int FSYNC_INT_EXT = 0x00;		/* 0x01: internal type, 0x02: external type, 0x00: OFF */
+module_param_named(fsync_int_ext, FSYNC_INT_EXT, int, 0644);
+
 struct max96712_source {
 	struct v4l2_async_subdev asd;
 	struct v4l2_subdev *sd;
@@ -492,9 +495,8 @@ static int max96712_color_pattern(struct max96712_priv *priv)
 }
 #endif
 
-static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
+static void max96712_internal_fsync(struct max96712_priv *priv)
 {
-	/* Internal type FSYNC */
 	/* Method: manual, Internal GMSL2 generator mode: 00, source of FSYNC: Des. */
 	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x04);  
 	
@@ -502,14 +504,14 @@ static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
 	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00); 
 	
 	/* Disable overlap window */
-	max96712_write_reg(priv, MAX96712_FSYNC_10,  0x00); 
-	max96712_write_reg(priv, MAX96712_FSYNC_11,  0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_10, 0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_11, 0x00); 
 
 	/* disable error threshold */
 	max96712_write_reg(priv, MAX96712_FSYNC_8,  0x00); 
 	max96712_write_reg(priv, MAX96712_FSYNC_9,  0x00); 
 	
-	/* AUTO_FS_LINKS = 0, FS_USE_XTAL = 1, FS_LINK_[3:0] = 0*/
+	/* AUTO_FS_LINKS = 0, FS_USE_XTAL = 1, FS_LINK_[3:0] = 1*/
 	max96712_write_reg(priv, MAX96712_FSYNC_15, 0xCF);   
 	
 	/* fsync_period = 25 MHz / 30fps */		   
@@ -520,6 +522,47 @@ static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
 
 	/* FSYNC_TX GPIO ID = 8 */
 	max96712_write_reg(priv, MAX96712_FSYNC_17, 0x40);
+	
+	///* Enable GPIO_RX_EN on  Ser. MAX9295A side MFPX */
+	
+	//////////////////////
+}
+
+static void max96712_external_fsync(struct max96712_priv *priv)
+{
+	/* FSYNC_MODE: 10, source of FSYNC: SoC */
+	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x08);  
+	
+	/* Turn off auto master link selection */
+	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00); 
+	
+	/* Disable overlap window */
+	max96712_write_reg(priv, MAX96712_FSYNC_10, 0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_11, 0x00); 
+
+	/* disable error threshold */
+	max96712_write_reg(priv, MAX96712_FSYNC_8,  0x00); 
+	max96712_write_reg(priv, MAX96712_FSYNC_9,  0x00); 
+	
+	/* AUTO_FS_LINKS = 1, FS_LINK_[3:0] = 1*/
+	max96712_write_reg(priv, MAX96712_FSYNC_15, 0x9F);  
+	
+	/* Config MFP2 to receive FSYNC signal */
+	max96712_write_reg(priv, 0x0306, 0x83);
+}
+
+static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
+{
+	if (FSYNC_INT_EXT == 0x01) 
+	{
+		/* From another MAX96712 */
+		max96712_internal_fsync(priv);
+	}
+	else
+	{
+		/* From SoC */
+		max96712_external_fsync(priv);
+	}
 }
 
 static int max96712_enable(struct v4l2_subdev *sd, int enable)

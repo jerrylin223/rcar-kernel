@@ -409,6 +409,11 @@
 		groups = "audio_clkin", "audio_clkout";
 		function = "audio_clk";
 	};
+	
+	pwm0_pins: pwm0grp {
+		groups = "pwm0";
+		function = "pwm0";
+	};
 };
 
 
@@ -1229,6 +1234,12 @@
 			};
 		};
 	};
+};
+
+&pwm0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pins>;
+	status = "okay";
 };
 
 /*

@@ -535,6 +535,14 @@ err_dsi_host:
 	return ret;
 }
 
+static void ti_sn_bridge_detach(struct drm_bridge *bridge)
+{
+	struct ti_sn_bridge *pdata = bridge_to_ti_sn_bridge(bridge);
+
+	mipi_dsi_device_unregister(pdata->dsi);
+	drm_connector_cleanup(&pdata->connector);
+}
+
 static void ti_sn_bridge_disable(struct drm_bridge *bridge)
 {
 	struct ti_sn_bridge *pdata = bridge_to_ti_sn_bridge(bridge);
@@ -987,6 +995,7 @@ static void ti_sn_bridge_post_disable(struct drm_bridge *bridge)
 
 static const struct drm_bridge_funcs ti_sn_bridge_funcs = {
 	.attach = ti_sn_bridge_attach,
+	.detach = ti_sn_bridge_detach,
 	.pre_enable = ti_sn_bridge_pre_enable,
 	.enable = ti_sn_bridge_enable,
 	.disable = ti_sn_bridge_disable,

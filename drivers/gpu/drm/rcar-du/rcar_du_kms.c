@@ -16,6 +16,7 @@
 #include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_vblank.h>
+#include <drm/drm_bridge.h>
 
 #include <linux/device.h>
 #include <linux/of_graph.h>
@@ -547,6 +548,27 @@ static const struct drm_mode_config_funcs rcar_du_mode_config_funcs = {
 	.atomic_commit = drm_atomic_helper_commit,
 };
 
+/* sequentially call drm_bridge_detach to avoid conflict when re-attach */
+static void rcar_du_encoders_resources_clean(struct rcar_du_device *rcdu)
+{
+	struct device_node *np = rcdu->dev->of_node;
+	struct device_node *remote;
+	struct drm_bridge *bridge;
+	int i;
+	
+	for (i = 0; i < RCAR_DU_OUTPUT_MAX; i++) {
+		int port;
+
+		if (!rcdu->routes_attached[i])
+			continue;
+
+		port = rcdu->info->routes[i].port;
+		remote = of_graph_get_remote_node(np, port, -1);
+		bridge = of_drm_find_bridge(remote);
+		drm_encoder_cleanup(bridge->encoder);
+	}
+}
+
 static int rcar_du_encoders_init_one(struct rcar_du_device *rcdu,
 				     enum rcar_du_output output,
 				     struct of_endpoint *ep)
@@ -586,6 +608,7 @@ static int rcar_du_encoders_init(struct rcar_du_device *rcdu)
 	struct device_node *np = rcdu->dev->of_node;
 	struct device_node *ep_node;
 	unsigned int num_encoders = 0;
+	int ret;
 
 	/*
 	 * Iterate over the endpoints and create one encoder for each output
@@ -595,7 +618,6 @@ static int rcar_du_encoders_init(struct rcar_du_device *rcdu)
 		enum rcar_du_output output;
 		struct of_endpoint ep;
 		unsigned int i;
-		int ret;
 
 		ret = of_graph_parse_endpoint(ep_node, &ep);
 		if (ret < 0) {
@@ -624,16 +646,21 @@ static int rcar_du_encoders_init(struct rcar_du_device *rcdu)
 		if (ret < 0) {
 			if (ret == -EPROBE_DEFER) {
 				of_node_put(ep_node);
-				return ret;
+				goto err_probe_defer_release;
 			}
 
 			continue;
 		}
 
+		rcdu->routes_attached[output] = true;
 		num_encoders++;
 	}
 
 	return num_encoders;
+
+err_probe_defer_release:
+	rcar_du_encoders_resources_clean(rcdu);
+	return ret;
 }
 
 static int rcar_du_properties_init(struct rcar_du_device *rcdu)

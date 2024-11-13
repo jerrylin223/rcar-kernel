@@ -736,8 +736,6 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	int ret;
 
-	dev_info(dev, "entered probe func\n");
-
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv) 
 		return -ENOMEM;
@@ -773,7 +771,7 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	priv->bridge.funcs = &max96789_bridge_funcs;
 	priv->bridge.of_node = priv->dev->of_node;
 	priv->bridge.ops = DRM_BRIDGE_OP_MODES;
-		
+	
 	drm_bridge_add(&priv->bridge);
 
 	//TODO: This control port isn't implemented

@@ -44,6 +44,7 @@
 #include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/sort.h>
 #include <dt-bindings/mux/mux.h>
 
 #define PCA954X_MAX_NCHANS 8
@@ -63,6 +64,11 @@ enum pca_type {
 	pca_9847,
 	pca_9848,
 	pca_9849,
+};
+
+struct chan_prior {
+	int chan_id;
+	unsigned int pri;
 };
 
 struct chip_desc {
@@ -409,6 +415,20 @@ static int pca954x_init(struct i2c_client *client, struct pca954x *data)
 }
 
 /*
+ * comparison function for sort()
+ */
+static int pca954x_cmp(const void *a, const void *b)
+{
+	const struct chan_prior *sa = a;
+	const struct chan_prior *sb = b;
+
+	if(sa->pri != sb->pri)
+		return sa->pri - sb->pri;
+	else
+		return sb->chan_id - sa->chan_id; /* smaller id has higher priority */
+}
+
+/*
  * I2C init/probing/exit functions
  */
 static int pca954x_probe(struct i2c_client *client,
@@ -419,6 +439,8 @@ static int pca954x_probe(struct i2c_client *client,
 	struct gpio_desc *gpio;
 	struct i2c_mux_core *muxc;
 	struct pca954x *data;
+	struct chan_prior *chans; 
+	struct device_node *child;
 	int num;
 	int ret;
 
@@ -488,13 +510,27 @@ static int pca954x_probe(struct i2c_client *client,
 	if (ret)
 		goto fail_cleanup;
 
-	/* Now create an adapter for each channel */
-	for (num = 0; num < data->chip->nchans; num++) {
-		ret = i2c_mux_add_adapter(muxc, 0, num, 0);
+	num = 0;
+	chans = devm_kcalloc(dev, data->chip->nchans,
+			 sizeof(struct chan_prior), GFP_KERNEL);
+	memset((char *)chans, 0, sizeof(struct chan_prior) * data->chip->nchans);
+
+	for_each_available_child_of_node(dev->of_node, child) {
+		chans[num].chan_id = num;
+		of_property_read_u32(child, "priority", &chans[num].pri);
+		num++;
+	}
+
+	sort(chans, data->chip->nchans, sizeof(struct chan_prior), pca954x_cmp, NULL);
+	pr_debug("highest priority channel id %d, priority %u\n",
+		 chans[data->chip->nchans - 1].chan_id, chans[data->chip->nchans -1].pri);
+
+	for (num = data->chip->nchans - 1; num >= 0; num--) {
+		ret = i2c_mux_add_adapter(muxc, 0, chans[num].chan_id, 0);
 		if (ret)
 			goto fail_cleanup;
 	}
-
+	
 	if (data->irq) {
 		ret = devm_request_threaded_irq(dev, data->client->irq,
 						NULL, pca954x_irq_handler,

@@ -31,6 +31,7 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 #include <linux/atomic.h>
+#include <linux/phy_fixed.h>
 #include <net/netlink.h>
 #include <net/genetlink.h>
 #include <net/sock.h>
@@ -319,8 +320,15 @@ int phy_mii_ioctl(struct phy_device *phydev, struct ifreq *ifr, int cmd)
 	u16 val = mii_data->val_in;
 	bool change_autoneg = false;
 	int prtad, devad;
+    struct fixed_mdio_bus *fix_bus;
 
-    phydev->mdio.bus->parent = &phydev->mdio.dev;
+    if(phy_is_pseudo_fixed_link(phydev))
+    {
+        fix_bus = phydev->mdio.bus->priv;
+        fix_bus->mac_dev = &phydev->mdio.dev;
+        fix_bus->bypass_mii_bus = phydev->fixed_link_bypass_mii_bus;
+    }
+    
 	switch (cmd) {
 	case SIOCGMIIPHY:
 		mii_data->phy_id = phydev->mdio.addr;

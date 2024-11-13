@@ -2,6 +2,13 @@
 #ifndef __PHY_FIXED_H
 #define __PHY_FIXED_H
 
+struct fixed_mdio_bus {
+	struct mii_bus *mii_bus;
+	struct list_head phys;
+    struct device *mac_dev;
+    unsigned bypass_mii_bus:1;
+};
+
 struct fixed_phy_status {
 	int link;
 	int speed;

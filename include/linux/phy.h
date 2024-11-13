@@ -550,6 +550,7 @@ struct phy_device {
 	unsigned is_c45:1;
 	unsigned is_internal:1;
 	unsigned is_pseudo_fixed_link:1;
+	unsigned fixed_link_bypass_mii_bus:1;
 	unsigned is_gigabit_capable:1;
 	unsigned has_fixups:1;
 	unsigned suspended:1;

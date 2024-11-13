@@ -638,6 +638,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <6>;
+			priority = <1>;
 		};
 		
 		i2c0_switch_ch7: i2c@7 {

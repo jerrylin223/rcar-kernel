@@ -104,6 +104,7 @@ struct rcar_du_device {
 	struct rcar_du_vsp vsps[RCAR_DU_MAX_VSPS];
 	struct drm_bridge *lvds[RCAR_DU_MAX_LVDS];
 	struct drm_bridge *mipi_dsi[RCAR_DU_MAX_MIPI_DSI];
+	bool routes_attached[RCAR_DU_OUTPUT_MAX];
 
 	struct {
 		struct drm_property *alpha;

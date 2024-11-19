@@ -155,6 +155,18 @@
 					remote-endpoint = <&max96752F_out1>;
 				};
 			};
+			port@2 {
+				reg = <2>;
+				panel_wxga_in2: endpoint {
+					remote-endpoint = <&max96752F_out2>;
+				};
+			};
+			port@3 {
+				reg = <3>;
+				panel_wxga_in3: endpoint {
+					remote-endpoint = <&max96752F_out3>;
+				};
+			};
 		};
 	};
 
@@ -185,12 +197,24 @@
 			port@0 {
 				reg = <0>;
 				panel_1080p_in0: endpoint {
-					remote-endpoint = <&max96752F_out2>;
+					remote-endpoint = <&max96752F_out0>;
 				};
 			};
 			port@1 {
 				reg = <1>;
 				panel_1080p_in1: endpoint {
+					remote-endpoint = <&max96752F_out1>;
+				};
+			};
+			port@2 {
+				reg = <2>;
+				panel_1080p_in2: endpoint {
+					remote-endpoint = <&max96752F_out2>;
+				};
+			};
+			port@3 {
+				reg = <3>;
+				panel_1080p_in3: endpoint {
 					remote-endpoint = <&max96752F_out3>;
 				};
 			};
@@ -866,7 +890,7 @@
 		reg = <0x28>;
 		status = "disabled";
 		
-		panel_switch;
+		//panel_switch;
 		
 		ports {
 			#address-cells = <1>;
@@ -882,7 +906,8 @@
 			port@1 {
 				reg = <1>;
 				max96752F_out2: endpoint {
-					remote-endpoint = <&panel_1080p_in0>;
+					remote-endpoint = <&panel_wxga_in2>;
+					//remote-endpoint = <&panel_1080p_in2>;
 				};
 			};
 		};
@@ -893,7 +918,7 @@
 		reg = <0x2A>;
 		status = "disabled";
 		
-		panel_switch;
+		//panel_switch;
 		
 		ports {
 			#address-cells = <1>;
@@ -909,7 +934,8 @@
 			port@1 {
 				reg = <1>;
 				max96752F_out3: endpoint {
-					remote-endpoint = <&panel_1080p_in0>;
+					remote-endpoint = <&panel_wxga_in3>;
+					//remote-endpoint = <&panel_1080p_in3>;
 				};
 			};
 		};

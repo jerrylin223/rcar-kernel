@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-2.0
+
+#include <dt-bindings/clock/r8a779g0-cpg-mssr.h>
+
+/dts-v1/;
+/plugin/;
+
+/* overlay dsi to max96789 and 7" panel - disable sn65dsi86  */
+
+&i2c0_switch_ch0 {
+	U21: sn65dsi86@2c {
+		status = "disabled";
+	};
+};
+
+&i2c0_switch_ch2 {
+	U28: max96789@60 {
+		status = "okay";
+	};
+
+	max96752F_0@48 {
+		status = "okay";
+	};
+
+	max96752F_1@4C {
+		status = "okay";
+	};
+};
+
+&dsi0 {
+	ports {
+		port@1 {
+			endpoint {
+				remote-endpoint = <&u28_max96789_in>;
+			};
+		};
+	};
+};

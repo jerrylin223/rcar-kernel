@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: GPL-2.0
+
+#include <dt-bindings/clock/r8a779g0-cpg-mssr.h>
+
+/dts-v1/;
+/plugin/;
+
+/* overlay dsi to max96789 and 10" panel - disable lt9611 */
+
+&rcar_sound {
+	status = "disabled";
+};
+
+&i2c0_switch_ch1 {
+	U26: lt9611@3b {
+		status = "disabled";
+	};
+};
+
+&i2c0_switch_ch2 {
+	U181: max96789@40 {
+		status = "okay";
+	};
+
+	max96752F_2@28 {
+		status = "okay";
+
+		panel_switch;
+		
+		ports {
+			port@1 {
+				reg = <1>;
+				max96752F_out2: endpoint {
+					remote-endpoint = <&panel_1080p_in2>;
+				};
+			};
+		};
+	};
+
+	max96752F_3@2A {
+		status = "okay";
+
+		panel_switch;
+		
+		ports {
+			port@1 {
+				reg = <1>;
+				max96752F_out3: endpoint {
+					remote-endpoint = <&panel_1080p_in3>;
+				};
+			};
+		};
+	};
+};
+
+&dsi1 {
+	ports {
+		port@1 {
+			endpoint {
+				remote-endpoint = <&u181_max96789_in>;
+			};
+		};
+	};
+};

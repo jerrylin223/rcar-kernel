@@ -39,6 +39,28 @@
 		reg = <0x6 0x00000000 0x1 0x00000000>;
 	};
 
+	 soc: soc {
+		du0 {
+			status = "disabled";
+		};
+
+		du_01 {
+			status = "disabled";
+		};
+
+		dsi0 {
+			status = "disabled";
+		};
+
+		dsc@feb8d000 {
+			status = "disabled";
+		};
+
+		dsi1 {
+			status = "disabled";
+		};
+	 };
+
 	reg_1p8v: regulator-1p8v {
 			compatible = "regulator-fixed";
 			regulator-name = "fixed-1.8V";

@@ -1645,7 +1645,7 @@
 //	clock-frequency = <24576000>; /* 48  kHz groups */
 };
 
-
+#define SUPPORT_DA7212
 &rcar_sound {
 	pinctrl-0 = <&sound_clk_pins>, <&sound_pins>;
 	pinctrl-names = "default";

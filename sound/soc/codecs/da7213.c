@@ -1951,6 +1951,7 @@ static int da7213_i2c_probe(struct i2c_client *i2c,
 {
 	struct da7213_priv *da7213;
 	int i, ret;
+	int status_data;
 
 	da7213 = devm_kzalloc(&i2c->dev, sizeof(*da7213), GFP_KERNEL);
 	if (!da7213)
@@ -1984,6 +1985,13 @@ static int da7213_i2c_probe(struct i2c_client *i2c,
 		return ret;
 	}
 
+	ret = regmap_read(da7213->regmap, DA7213_STATUS1, &status_data);
+	if(ret)
+	{
+		dev_err(&i2c->dev, "cannot access i2c: %d\n", ret);
+		return -ENODEV;
+	}
+	
 	pm_runtime_set_autosuspend_delay(&i2c->dev, 100);
 	pm_runtime_use_autosuspend(&i2c->dev);
 	pm_runtime_set_active(&i2c->dev);

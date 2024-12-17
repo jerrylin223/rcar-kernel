@@ -24,6 +24,8 @@ static int rcar_gen4_pcie_host_init(struct dw_pcie_rp *pp)
 	if (ret < 0)
 		return ret;
 
+	gpiod_set_value_cansleep(dw->pe_rst, 0);
+
 	ret = rcar_gen4_pcie_set_device_type(rcar, true, dw->num_lanes);
 	if (ret < 0)
 		return ret;
@@ -42,8 +44,6 @@ static int rcar_gen4_pcie_host_init(struct dw_pcie_rp *pp)
 		val |= MSI_CTRL_INT;
 		writel(val, rcar->base + PCIEINTSTS0EN);
 	}
-
-	gpiod_set_value_cansleep(dw->pe_rst, 0);
 
 	dw_pcie_setup_rc(pp);
 

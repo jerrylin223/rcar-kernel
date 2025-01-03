@@ -9,6 +9,11 @@
 #include "r8a779g0-raptor-cpu.dtsi"
 #include <dt-bindings/media/r8a779g0-csi2.h>
 
+#define AUDIO_CODEC_DA7212		1
+#define AUDIO_CODEC_MAX98357A	2
+#define AUDIO_CODEC_LT9611		3
+#define AUDIO_CODEC_SELECTION	AUDIO_CODEC_MAX98357A
+
 / {
 	model = "Renesas Raptor board based on r8a779g0";
 	compatible = "renesas,raptor-cpu", "renesas,r8a779g0";
@@ -220,6 +225,18 @@
 			};
 		};
 	};
+#if (AUDIO_CODEC_SELECTION == AUDIO_CODEC_MAX98357A)
+	max98357a {
+		compatible = "maxim,max98357a";
+		status = "okay";
+		
+		port@0 {
+			max98357a_endpoint: endpoint {
+				remote-endpoint = <&rsnd_endpoint>;
+			};
+		};
+	};
+#endif
 };
 
 &ref_clk {
@@ -734,14 +751,14 @@
 					remote-endpoint = <&dsi1_out>;
 				};
 			};
-
+#if (AUDIO_CODEC_SELECTION == AUDIO_CODEC_LT9611)
 			port@2 {
 				reg = <2>;
 				lt9611_audio: endpoint {
 					remote-endpoint = <&rsnd_endpoint>;
 				};
 			};
-
+#endif
 			port@3 {
 				reg = <3>;
 				lt9611_out: endpoint {
@@ -1663,9 +1680,11 @@
 	ports {
 		rsnd_port0: port@0 {
 			rsnd_endpoint: endpoint {
-#ifdef SUPPORT_DA7212
+#if (AUDIO_CODEC_SELECTION == AUDIO_CODEC_DA7212)
 				remote-endpoint = <&da7212_endpoint>;
-#else
+#elif (AUDIO_CODEC_SELECTION == AUDIO_CODEC_MAX98357A)
+				remote-endpoint = <&max98357a_endpoint>;
+#elif (AUDIO_CODEC_SELECTION == AUDIO_CODEC_LT9611)
 				remote-endpoint = <&lt9611_audio>;
 #endif
 				dai-format = "i2s";
@@ -1679,8 +1698,8 @@
 	};
 };
 
-#ifdef SUPPORT_DA7212
 &i2c2_switch_ch4 {
+#if (AUDIO_CODEC_SELECTION == AUDIO_CODEC_DA7212)
 	da7212: codec@1a {
 		compatible = "dlg,da7212";
 
@@ -1710,8 +1729,8 @@
 			};
 		};
 	};
-};
 #endif
+};
 
 &vin00 {
 	status = "okay";

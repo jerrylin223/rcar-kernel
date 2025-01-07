@@ -804,6 +804,7 @@ static void max96712_disable(struct max96712_priv *priv)
 	max96712_update_bits(priv, MAX_BACKTOP12(0), 0x02, 0);
 	max96712_update_bits(priv, MAX96712_VIDEO_PIPE_EN,
 			     priv->links_mask, 0);
+	max96712_power(priv, 0);
 }
 
 static void max96712_postinit(struct max96712_priv *priv)

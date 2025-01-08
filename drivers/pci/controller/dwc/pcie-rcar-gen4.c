@@ -407,7 +407,7 @@ static int rcar_gen4_pcie_link_up(struct dw_pcie *dw)
 	val = readl(rcar->base + PCIEINTSTS0);
 	mask = RDLH_LINK_UP | SMLH_LINK_UP;
 
-	rcar_gen4_pcie_check_speed(dw);
+	//rcar_gen4_pcie_check_speed(dw);	//[RTX] Move it into rcar_gen4_pcie_start_link()
 
 	return (val & mask) == mask;
 }
@@ -416,7 +416,9 @@ static int rcar_gen4_pcie_start_link(struct dw_pcie *dw)
 {
 	struct rcar_gen4_pcie *rcar = to_rcar_gen4_pcie(dw);
 	int ret = 0;
-
+	
+	rcar_gen4_pcie_check_speed(dw);		//[RTX] Perform rcar_gen4_pcie_check_speed() in .start_link
+	
 	if (rcar->linkup_setting)
 	{
 		ret = rcar_gen4_pcie_linkup_wa(rcar);
@@ -562,7 +564,7 @@ int rcar_gen4_pcie_devm_reset_get(struct rcar_gen4_pcie *rcar,
 static const struct dw_pcie_ops dw_pcie_ops = {
 	.start_link = rcar_gen4_pcie_start_link,
 	.stop_link = rcar_gen4_pcie_stop_link,
-	.link_up = rcar_gen4_pcie_link_up,
+	//.link_up = rcar_gen4_pcie_link_up,	// [RTX] Don't register the link_up
 };
 
 struct rcar_gen4_pcie *rcar_gen4_pcie_devm_alloc(struct device *dev)

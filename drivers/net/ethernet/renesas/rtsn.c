@@ -1082,6 +1082,8 @@ static int rtsn_hwstamp_set(struct net_device *ndev, struct ifreq *req)
 
 static int rtsn_do_ioctl(struct net_device *ndev, struct ifreq *req, int cmd)
 {
+	struct phy_device *phydev = ndev->phydev;
+	
 	if (!netif_running(ndev))
 		return -EINVAL;
 
@@ -1094,7 +1096,7 @@ static int rtsn_do_ioctl(struct net_device *ndev, struct ifreq *req, int cmd)
 		break;
 	}
 
-	return 0;
+	return phy_mii_ioctl(phydev, req, cmd);
 }
 
 static const struct net_device_ops rtsn_netdev_ops = {

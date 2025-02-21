@@ -29,10 +29,8 @@
 #define DEBUG_COLOR_PATTERN		0
 #define DEBUG_MBPS			200000000
 
-static unsigned int FSYNC_ON_OFF = 0x00;		/* 0x01: ON, 0x00: OFF */
-module_param_named(fsync_on_off, FSYNC_ON_OFF, int, 0644);
-
-static unsigned int FSYNC_INT_EXT = 0x00;		/* 0x01: internal type, 0x02: external type, 0x00: OFF */
+/* 0x01: internal type, 0x02: external type, 0x00: OFF */
+static unsigned int FSYNC_INT_EXT = 0x00;
 module_param_named(fsync_int_ext, FSYNC_INT_EXT, int, 0644);
 
 struct max96712_source {
@@ -533,22 +531,15 @@ static void max96712_external_fsync(struct max96712_priv *priv)
 	/* FSYNC_MODE: 10, source of FSYNC: SoC */
 	max96712_write_reg(priv, MAX96712_FSYNC_0,  0x08);  
 	
-	/* Turn off auto master link selection */
-	max96712_write_reg(priv, MAX96712_FSYNC_2,  0x00); 
-	
-	/* Disable overlap window */
-	max96712_write_reg(priv, MAX96712_FSYNC_10, 0x00); 
-	max96712_write_reg(priv, MAX96712_FSYNC_11, 0x00); 
-
-	/* disable error threshold */
-	max96712_write_reg(priv, MAX96712_FSYNC_8,  0x00); 
-	max96712_write_reg(priv, MAX96712_FSYNC_9,  0x00); 
-	
 	/* AUTO_FS_LINKS = 1, FS_LINK_[3:0] = 1*/
 	max96712_write_reg(priv, MAX96712_FSYNC_15, 0x9F);  
 	
 	/* Config MFP2 to receive FSYNC signal */
 	max96712_write_reg(priv, 0x0306, 0x83);
+	
+	/* Config MAX96712 MFP2 TX ID = 12 */
+	//max96712_write_reg(priv, 0x0307, 0x2C);
+	max96712_update_bits(priv, 0x0307, 0x1F, 0x0C);
 }
 
 static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
@@ -558,7 +549,7 @@ static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
 		/* From another MAX96712 */
 		max96712_internal_fsync(priv);
 	}
-	else
+	else if (FSYNC_INT_EXT == 0x02) 
 	{
 		/* From SoC */
 		max96712_external_fsync(priv);
@@ -1116,8 +1107,8 @@ static void max96712_setup(struct max96712_priv *priv)
 	max96712_preinit(priv);
 	max96712_gmsl2_initial_setup(priv);
 	max96712_mipi_setup(priv);
-
-	if (FSYNC_ON_OFF == 0x01)
+	
+	if (FSYNC_INT_EXT != 0x00)
 		max96712_gmsl2_fsync_setup(priv);
 		
 	/* Start all cameras. */

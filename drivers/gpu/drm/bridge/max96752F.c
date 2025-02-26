@@ -83,7 +83,7 @@ static void max96752F_atomic_bridge_enable(struct drm_bridge *bridge,
 	bool lvds_format_jeida;
 	int ret;
 
-	dev_info(priv->dev, "%s: entered drm bridge enable\n", __func__);
+	dev_dbg(priv->dev, "%s: entered drm bridge enable\n", __func__);
 
 	gpiod_set_value_cansleep(priv->pwdn, 1);
 	msleep(45);
@@ -166,7 +166,7 @@ static void max96752F_atomic_bridge_disable(struct drm_bridge *bridge,
 {
 	struct max96752F *priv = bridge_to_max96752F(bridge);
 
-	dev_info(priv->dev, "%s: entered disable func\n", __func__);
+	dev_dbg(priv->dev, "%s: entered disable func\n", __func__);
 	gpiod_set_value_cansleep(priv->pwdn, 0);
 	usleep_range(1000,1100);
 }
@@ -226,8 +226,6 @@ static int max96752F_bridge_probe(struct i2c_client *client)
 	struct max96752F *priv;
 	struct device *dev = &client->dev;
 	int ret;
-
-	dev_info(dev, "%s: entered probe func\n", __func__);
 
 	priv = devm_kzalloc(dev, sizeof(struct max96752F), GFP_KERNEL);
 	if(!priv)

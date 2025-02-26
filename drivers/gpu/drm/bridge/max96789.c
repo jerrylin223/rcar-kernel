@@ -21,6 +21,7 @@
 #include <linux/i2c.h>
 #include <linux/of_graph.h>
 #include <linux/regmap.h>
+#include <linux/pm_runtime.h>
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_bridge.h>
@@ -43,7 +44,7 @@ module_param_named(ser_patgen_select, SER_PATTERN_SEL, int, 0644);
  * DEBUG
  */
  
-static void DEBUG_INFO(struct max96789_priv *priv){
+static void __maybe_unused DEBUG_INFO(struct max96789_priv *priv){
 	unsigned int val;
 
 	regmap_read(priv->regmap, MAX96789_PWR0, &val);
@@ -655,14 +656,6 @@ static void max96789_atomic_bridge_enable(struct drm_bridge *bridge,
 	regmap_update_bits(priv->regmap, MAX96789_REG2, mask, mask);
 }
 
-static void max96789_atomic_bridge_disable(struct drm_bridge *bridge,
-					   struct drm_bridge_state *old_bridge_state)
-{
-	struct max96789_priv *priv = bridge_to_max96789_priv(bridge);
-
-	gpiod_set_value_cansleep(priv->gpiod_pwdn, 0);
-}
-
 static int max96789_bridge_get_modes(struct drm_bridge *bridge,
 				     struct drm_connector *connector)
 {
@@ -672,22 +665,32 @@ static int max96789_bridge_get_modes(struct drm_bridge *bridge,
 	return count;
 }
 
-static enum drm_connector_status max96789_bridge_detect(struct drm_bridge *bridge)
+static void max96789_atomic_bridge_pre_enable(struct drm_bridge *bridge,
+					      struct drm_bridge_state *old_bridge_state)
 {
-	return connector_status_connected;
+	struct max96789_priv *priv = bridge_to_max96789_priv(bridge);
+	pm_runtime_resume_and_get(priv->dev);
+}
+
+static void max96789_atomic_bridge_post_disable(struct drm_bridge *bridge,
+						struct drm_bridge_state *old_bridge_state)
+{
+	struct max96789_priv *priv = bridge_to_max96789_priv(bridge);
+	pm_runtime_mark_last_busy(priv->dev);
+	pm_runtime_put_autosuspend(priv->dev);
 }
 
 static const struct drm_bridge_funcs max96789_bridge_funcs = {
 	.attach = max96789_bridge_attach,
+	.atomic_pre_enable = max96789_atomic_bridge_pre_enable,
 	.atomic_enable = max96789_atomic_bridge_enable,
-	.atomic_disable = max96789_atomic_bridge_disable,
+	.atomic_post_disable = max96789_atomic_bridge_post_disable,
 
 	.atomic_reset = drm_atomic_helper_bridge_reset,
 	.atomic_duplicate_state =drm_atomic_helper_bridge_duplicate_state ,
 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
 
 	.get_modes = max96789_bridge_get_modes,
-	.detect = max96789_bridge_detect,
 };
 
 static int max96789_parse_dt(struct max96789_priv *priv)
@@ -785,6 +788,14 @@ static int max96789_bridge_probe(struct i2c_client *client)
 	if(ret)
 		goto error_probe_defer;
 
+	ret = pm_runtime_set_active(dev);
+	if (ret)
+		goto error_probe_defer;
+
+	pm_runtime_enable(dev);
+	pm_runtime_set_autosuspend_delay(dev, 1000);
+	pm_runtime_use_autosuspend(dev);
+
 	return 0;
 
 error_probe_defer:
@@ -801,9 +812,50 @@ static int max96789_bridge_remove(struct i2c_client *client)
 	of_node_put(priv->host_node);
 	regmap_exit(priv->regmap);
 	drm_bridge_remove(&priv->bridge);
+	gpiod_set_value_cansleep(priv->gpiod_pwdn, 0);
 
 	return 0;
 }
+
+static int __maybe_unused max96789_runtime_suspend(struct device *dev)
+{
+	struct max96789_priv *priv = dev_get_drvdata(dev);
+	int ret;
+
+	regmap_update_bits(priv->regmap, MAX96789_PWR4, 
+			   WAKE_EN_A | WAKE_EN_B, 0x00);
+	ret = regmap_update_bits(priv->regmap, MAX96789_CTRL0,
+				 RESET_LINK | SLEEP, RESET_LINK | SLEEP);
+
+	return ret;
+}
+
+static int __maybe_unused max96789_runtime_resume(struct device *dev)
+{
+	struct max96789_priv *priv = dev_get_drvdata(dev);
+	unsigned long j0, j1, delay;
+	int val, ret;
+
+	delay = msecs_to_jiffies(100);
+	j0 = jiffies;
+	j1 = j0 + delay;
+
+	ret = -1;
+	while (ret && time_before(jiffies, j1))
+		ret = regmap_read(priv->regmap, MAX96789_CTRL0, &val);
+
+	if (!ret)
+		ret = regmap_update_bits(priv->regmap, MAX96789_CTRL0,
+				 	 RESET_LINK | SLEEP, 0x00);
+	else
+		dev_err(dev, "device resume failed\n");
+
+	return ret;
+}
+
+static const struct dev_pm_ops max96789_pm_ops = {
+	SET_RUNTIME_PM_OPS(max96789_runtime_suspend, max96789_runtime_resume, NULL)
+};
 
 static const struct of_device_id max96789_bridge_match_table[] = {
 	{.compatible = "maxim,max96789"},
@@ -814,6 +866,7 @@ MODULE_DEVICE_TABLE(of, max96789_bridge_match_table);
 static struct i2c_driver max96789_bridge_driver = {
 	.driver = {
 		.name = "maxim-max96789",
+		.pm = &max96789_pm_ops,
 		.of_match_table = max96789_bridge_match_table,
 	},
 	.probe_new = max96789_bridge_probe,

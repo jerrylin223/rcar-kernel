@@ -7,6 +7,8 @@
 
 #define MAX96789_PWR0  				0x08
 #define MAX96789_PWR4  				0x0C
+#define   WAKE_EN_B				BIT(5)
+#define   WAKE_EN_A				BIT(4)
 #define MAX96789_REG1				0x01
 #define   TX_RATE_MASK				GENMASK(3,2)
 #define   TX_RATE_SHIFT				2
@@ -28,8 +30,10 @@
 #define   SPLTR_CPBL_N				BIT(3)
 
 #define MAX96789_CTRL0 				0x10
+#define   RESET_LINK				BIT(6)
 #define   RESET_ONESHOT				BIT(5)
 #define   AUTO_LINK				BIT(4)
+#define   SLEEP					BIT(3)
 #define   LINK_CFG_MASK				GENMASK(1,0)
 #define   LINK_CFG_DUAL				0
 #define   LINK_CFG_SINGLE_A			1

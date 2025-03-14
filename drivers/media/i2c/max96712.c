@@ -537,9 +537,12 @@ static void max96712_external_fsync(struct max96712_priv *priv)
 	/* Config MFP2 to receive FSYNC signal */
 	max96712_write_reg(priv, 0x0306, 0x83);
 	
-	/* Config MAX96712 MFP2 TX ID = 12 */
-	//max96712_write_reg(priv, 0x0307, 0x2C);
+	/* Config MAX96712 MFP2 receive external 
+	 * FSYNC signal for each link, TX ID = 12 */
 	max96712_update_bits(priv, 0x0307, 0x1F, 0x0C);
+	max96712_update_bits(priv, 0x033D, 0x3F, 0x2C);
+	max96712_update_bits(priv, 0x0374, 0x3F, 0x2C);
+	max96712_update_bits(priv, 0x03AA, 0x3F, 0x2C);
 }
 
 static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
@@ -639,6 +642,17 @@ static int max9295a_set_regs(struct max96712_link *link,
 	return 0;
 }
 
+static void ap0202_change_config(void)
+{
+	//int ap0202_addrs = 0x5d;
+	//reg16_write16_addr(ap0202_addrs, 0x098E, 0x7C00);
+	//msleep(200);
+
+	//reg16_write16_addr(ap0202_addrs, 0xFC00, 0x2800);
+	//reg16_write16_addr(ap0202_addrs, 0x0040, 0x8100);
+	//msleep(200);
+}
+
 static int max9295a_sensor_set_regs(struct max96712_priv *priv, u32 link_nr)
 {
 	int ret;
@@ -653,7 +667,23 @@ static int max9295a_sensor_set_regs(struct max96712_priv *priv, u32 link_nr)
 	ret = max9295a_set_regs(link, configuretable_ar0231,
 				ARRAY_SIZE(configuretable_ar0231));
 	msleep(200);
-
+	
+	//int ap0202_addrs = 0x5d;	// AR0231's ISP
+	//if (FSYNC_INT_EXT == 0x02)
+	//{	
+		//reg16_write16_addr(link->client, ap0202_addrs, 0x098e, 0xc890);
+		//reg16_write_addr(link->client, ap0202_addrs, 0xc890, 0x03);
+		//reg16_write_addr(link->client, ap0202_addrs, 0xc891, 0x03);
+		//reg16_write_addr(link->client, ap0202_addrs, 0xc892, 0x00); // trigger types,continuous trigger mode
+		//ap0202_change_config();
+	//} 
+	//else if (FSYNC_INT_EXT == 0x00)
+	//{
+		//reg16_write16_addr(link->client, ap0202_addrs, 0x098e, 0xc890);
+		//reg16_write_addr(link->client, ap0202_addrs, 0xc890, 0x00);
+		//ap0202_change_config();
+	//}
+	
 	return ret;
 }
 

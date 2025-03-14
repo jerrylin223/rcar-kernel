@@ -506,26 +506,6 @@ static inline int reg16_read16(struct i2c_client *client, u16 reg, u16 *val)
 	return ret < 0 ? ret : 0;
 }
 
-static inline int reg16_write16(struct i2c_client *client, u16 reg, u16 val)
-{
-	int ret, retries;
-	u8 buf[4] = {reg >> 8, reg & 0xff, val >> 8, val & 0xff};
-
-	for (retries = REG8_NUM_RETRIES; retries; retries--) {
-		ret = i2c_master_send(client, buf, 4);
-		if (ret == 4)
-			break;
-	}
-
-	if (ret < 0) {
-		dev_dbg(&client->dev,
-			"write fail: chip 0x%x register 0x%x: %d\n",
-			client->addr, reg, ret);
-	}
-
-	return ret < 0 ? ret : 0;
-}
-
 static inline int reg16_read_n(struct i2c_client *client,
 			       u16 reg, u8 *val, int n)
 {
@@ -659,10 +639,17 @@ static inline int reg16_read_addr(struct i2c_client *client, int chip,
 	return 0;
 }
 
-#define __reg8_read(addr, reg, val)	reg8_read_addr(priv->client, addr, reg, val)
+
+static inline int reg16_write16_addr(struct i2c_client *client, int chip, u16 reg, u16 val)
+{
+	return 0;
+}
+
+#define __reg8_read(addr, reg, val)	    reg8_read_addr(priv->client, addr, reg, val)
 #define __reg8_write(addr, reg, val)	reg8_write_addr(priv->client, addr, reg, val)
 #define __reg16_read(addr, reg, val)	reg16_read_addr(priv->client, addr, reg, val)
 #define __reg16_write(addr, reg, val)	reg16_write_addr(priv->client, addr, reg, val)
+#define __reg16_write16(addr, reg, val)	reg16_write16_addr(priv->client, addr, reg, val)
 
 struct i2c_mux_priv {
 	struct i2c_adapter adap;

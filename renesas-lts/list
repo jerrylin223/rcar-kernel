@@ -1,0 +1,107 @@
+Local     / arm64: defconfig: Add Renesas MSIOF sound support
+Local     / arm64: dts: renesas: sparrow-hawk: Add MSIOF Sound support
+Local     / ASoC: renesas: add MSIOF sound support
+Local     / ASoC: renesas: rsnd: enable to use "adg" clock
+Local     / ASoC: renesas: rsnd: care BRGA/BRGB select in rsnd_adg_clk_enable()
+Local     / ASoC: renesas: rsnd: allow to use ADG as standalone
+Local     / ASoC: rsnd: use snd_pcm_direction_name()
+Local     / spi: sh-msiof: ignore driver probing if it was MSIOF Sound
+Local     / spi: sh-msiof: use dev in sh_msiof_spi_probe()
+Local     / dt-bindings: renesas,sh-msiof: Add MSIOF I2S Sound support
+Local     / arm64: dts: renesas: r8a779g3: Add Retronix R-Car V4H Sparrow Hawk board support
+Local     / dt-bindings: soc: renesas: Document Retronix R-Car V4H Sparrow Hawk board support
+Local     / dt-bindings: vendor-prefixes: Add Retronix Technology Inc.
+v6.14     / ASoC: audio-graph-card2: Use extra format on each DAI
+v6.14     / ASoC: soc-core: Enable to use extra format on each DAI
+v6.14     / ASoC: audio-graph-card2: use of_graph_get_port_by_id() at graph_get_next_multi_ep()
+v6.14     / ASoC: simple-card: use __free(device_node) for device node
+v6.14     / ASoC: audio-graph-card: use __free(device_node) for device node
+v6.14     / ASoC: audio-graph-card2: use __free(device_node) for device node
+v6.13     / ASoC: audio-graph-card2: use new of_graph functions
+v6.14     / ASoC: simple-card: Drop unnecessary "dai-tdm-slot-width-map" property presence check
+v6.14     / ASoC: Use of_property_present() for non-boolean properties
+v6.14     / ASoC: simple-card-utils: Unify clock direction by clk_direction
+v6.14     / ASoC: simple-card-utils: use for_each_of_graph_port() on graph_get_dai_id()
+v6.14     / ASoC: simple-card-utils: check port reg first on graph_get_dai_id()
+v6.14     / ASoC: simple-card-utils: use __free(device_node) for device node
+v6.13     / ASoC: simple-card-utils: care simple_util_dai for dummy DAI
+v6.13     / ASoC: test-component: Support continuous rates for test component
+Local     / dt-bindings: timer: renesas,tpu: remove obsolete binding
+Local     / dt-bindings: soc: renesas: Document MYIR Remi Pi board
+Local     / dt-bindings: soc: renesas: Document Yuridenki-Shokai Kakip board
+Local     / dt-bindings: soc: renesas: Document more Renesas RZ/V2H SoC variants
+v6.14     / dt-bindings: soc: renesas: Document RZ/G3E SMARC SoM and Carrier-II EVK
+v6.14     / dt-bindings: soc: renesas: Document Renesas RZ/G3E SoC variants
+v6.14     / dt-bindings: soc: renesas: Document R8A779G3 White Hawk Single
+v6.14     / dt-bindings: soc: renesas: Move R8A779G0 White Hawk up
+Local     / dt-bindings: timer: Correct indentation and style in DTS example
+v6.13     / of: property: use new of_graph functions
+v6.13     / of: property: add of_graph_get_next_port_endpoint()
+v6.13     / of: property: add of_graph_get_next_port()
+v6.13     / ASoC: rsnd: check rsnd_adg_clk_enable() return value
+v6.13     / ASoC: Rename "sh" to "renesas"
+v6.14     / arm64: dts: renesas: white-hawk-single: Add R-Car Sound support
+v6.14     / arm64: dts: renesas: white-hawk-ard-audio: Drop SoC part
+v6.14     / arm64: dts: renesas: r8a779g3: Add White Hawk Single support
+v6.14     / arm64: dts: renesas: Factor out White Hawk Single board support
+v6.14     / arm64: dts: renesas: Add R8A779G3 SoC support
+v6.13     / dt-bindings: fuse: Move renesas,rcar-{efuse,otp} to nvmem
+v6.13     / nvmem: Add R-Car E-FUSE driver
+v6.14     / clk: renesas: r8a779h0: Add display clocks
+v6.14     / drm/rcar-du: Add support for r8a779h0
+v6.14     / drm/rcar-du: Write DPTSR only if the second source exists
+v6.14     / drm/rcar-du: dsi: Add r8a779h0 support
+v6.14     / dt-bindings: display: bridge: renesas,dsi-csi2-tx: Add r8a779h0
+v6.14     / dt-bindings: display: renesas,du: Add r8a779h0
+v6.14     / dt-bindings: display: renesas,du: Add missing constraints
+v6.14     / arm64: dts: renesas: falcon-ethernet: Describe PHYs connected on the breakout board
+v6.14     / arm64: dts: renesas: r8a779a0: Remove address- and size-cells from AVB[1-5]
+v6.13     / arm64: dts: renesas: r8a779a0: Add E-FUSE node
+v6.14     / arm64: dts: renesas: gray-hawk-single: Add video capture support
+v6.14     / arm64: dts: renesas: gray-hawk-single: Add DisplayPort support
+v6.14     / arm64: dts: renesas: gray-hawk-single: Fix indentation
+v6.13     / arm64: dts: renesas: Use interrupts-extended for I/O expanders
+v6.13     / arm64: dts: renesas: Use interrupts-extended for Ethernet PHYs
+v6.13     / arm64: dts: renesas: r8a779h0: gray-hawk-single: Enable PCIe Host
+v6.14     / arm64: dts: renesas: r8a779h0: Add display support
+v6.13     / arm64: dts: renesas: r8a779h0: Add OTP_MEM node
+v6.13     / arm64: dts: renesas: r8a779h0: Add PCIe Host and Endpoint nodes
+v6.14     / arm64: dts: renesas: white-hawk-csi-dsi: Define CSI-2 data line orders
+v6.14     / media: dt-bindings: Add property to describe CSI-2 C-PHY line orders
+v6.14     / media: v4l: fwnode: Parse MiPI DisCo for C-PHY line-orders
+v6.14     / net: renesas: rswitch: use FIELD_PREP for remaining MPIC register fields
+v6.14     / net: renesas: rswitch: do not write to MPSM register at init time
+v6.14     / net: renesas: rswitch: enable only used MFWD features
+v6.14     / net: renesas: rswitch: remove speed from gwca structure
+v6.14     / net: renesas: rswitch: do not deinit disabled ports
+v6.13     / media: staging: max96712: Add support for MAX96724
+v6.13     / media: staging: max96712: Document the DEBUG_EXTRA register
+v6.13     / media: staging: max96712: Move link frequency setting to device struct
+v6.13     / media: staging: max96712: Remove device id check
+Local     / media: rcar-csi2: Convert to .{enable|disable}_streams
+Local     / media: rcar-isp: Convert to .{enable|disable}_streams
+Local     / media: rcar-isp: Convert to subdev state
+Local     / media: rcar-csi2: Use v4l2_subdev_{enable|disable}_streams()
+Local     / media: rcar-isp: Use v4l2_subdev_{enable|disable}_streams()
+Local     / media: rcar-vin: Use v4l2_subdev_{enable|disable}_streams()
+Local     / media: rcar-csi2: Use v4l2_get_link_freq()
+Local     / media: rcar-isp: Add RAW8, RAW10 and RAW12 formats
+Local     / media: rcar-csi2: Add RAW10 and RAW12 formats
+Local     / media: rcar-csi2: Move Y8 entry to a better place
+v6.14     / media: rcar-csi2: Update D-PHY startup on V4M
+v6.14     / media: rcar-csi2: Allow specifying C-PHY line order
+v6.13     / media: platform: drop vb2_ops_wait_prepare/finish
+v6.13     / media: rcar-vin: Add support for RAW10
+v6.13     / media: rcar-isp: Add family compatible for R-Car Gen4 family
+v6.13     / media: rcar-csi2: Add support for R-Car V4M
+v6.13     / media: rcar-csi2: Add documentation for PHY_EN and PHY_MODE registers
+v6.13     / media: rcar-csi2: Move PHTW write helpers
+v6.13     / media: rcar-csi2: Add helper to lookup mbps settings
+v6.13     / media: rcar-csi2: Abstract PHTW and PHYPLL register offsets
+v6.13     / media: rcar-csi2: Allow writing any code and data value to PHTW
+v6.13     / media: rcar-csi2: Correct field size for PHTW writes
+v6.13     / media: rcar_drif.c: set lock before calling vb2_queue_init()
+v6.13     / dt-bindings: media: renesas,csi2: Add binding for V4M
+v6.13     / dt-bindings: media: renesas,isp: Add binding for V4M
+v6.13     / dt-bindings: media: renesas,isp: Add Gen4 family fallback
+v6.13     / clk: renesas: r8a779h0: Drop CLK_PLL2_DIV2 to clarify ZCn clocks

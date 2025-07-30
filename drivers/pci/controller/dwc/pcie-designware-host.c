@@ -534,7 +534,7 @@ int dw_pcie_host_init(struct dw_pcie_rp *pp)
 	dw_pcie_wait_for_link(pci);
 
 	bridge->sysdata = pp;
-
+msleep(100);//this can improve nvme identification on pcie0
 	ret = pci_host_probe(bridge);
 	if (ret)
 		goto err_stop_link;

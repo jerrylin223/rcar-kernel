@@ -774,7 +774,7 @@ static struct platform_driver rcar_gen4_pcie_driver = {
 	.driver = {
 		.name = "pcie-rcar-gen4",
 		.of_match_table = rcar_gen4_pcie_of_match,
-		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+//		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 	.probe = rcar_gen4_pcie_probe,
 	.remove_new = rcar_gen4_pcie_remove,

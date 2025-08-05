@@ -426,7 +426,7 @@ static void renesas_rom_erase(struct pci_dev *pdev)
 static bool renesas_setup_rom(struct pci_dev *pdev, const struct firmware *fw)
 {
 	const u32 *fw_data = (const u32 *)fw->data;
-	int err, i;
+	int err, i, retry;
 	u8 status;
 
 	/* 2. Write magic word to Data0 */
@@ -453,6 +453,7 @@ static bool renesas_setup_rom(struct pci_dev *pdev, const struct firmware *fw)
 	}
 
 	/* 5 to 16 Write FW to DATA0/1 while checking SetData0/1 */
+#if 0
 	for (i = 0; i < fw->size / 4; i++) {
 		err = renesas_fw_download_image(pdev, fw_data, i, true);
 		if (err) {
@@ -462,7 +463,22 @@ static bool renesas_setup_rom(struct pci_dev *pdev, const struct firmware *fw)
 			goto remove_bypass;
 		}
 	}
-
+#else
+for (i = 0; i < fw->size / 4; i++) {
+	for(retry=0;retry<4;retry++) {
+		err = renesas_fw_download_image(pdev, fw_data, i, true);
+		if (err) {
+			dev_err(&pdev->dev,
+				"ROM Download Step %d failed at position %d bytes with (%d), retry=%d\n",
+				 i, i * 4, err, retry);
+			if(retry == 3)
+				goto remove_bypass;
+		}
+		else
+			break;
+	}
+}
+#endif
 	/*
 	 * wait till DATA0/1 is cleared
 	 */

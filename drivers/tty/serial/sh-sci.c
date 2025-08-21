@@ -148,6 +148,7 @@ struct sci_port {
 	struct work_struct		work_tx;
 	struct hrtimer			rx_timer;
 	unsigned int			rx_timeout;	/* microseconds */
+	bool				rx_timer_inited;
 #endif
 	unsigned int			rx_frame;
 	int				rx_trigger;
@@ -1700,10 +1701,11 @@ static void sci_request_dma(struct uart_port *port)
 			buf += s->buf_len_rx;
 			dma += s->buf_len_rx;
 		}
-
-		hrtimer_init(&s->rx_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-		s->rx_timer.function = sci_dma_rx_timer_fn;
-
+		if (!s->rx_timer_inited) {
+			hrtimer_init(&s->rx_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+			s->rx_timer.function = sci_dma_rx_timer_fn;
+			s->rx_timer_inited = true;
+		}
 		s->chan_rx_saved = s->chan_rx = chan;
 
 		if (port->type == PORT_SCIFA || port->type == PORT_SCIFB ||

@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+/*
+ * Common Device Tree Source support Native Linux display driver
+ * and 4 lane PCIe for the White Hawk CPU and Breakout boards
+ *
+ * Copyright (C) 2025 Renesas Electronics Corp.
+ */
+
+/ {
+	soc: soc {
+		du0 {
+			status = "disabled";
+		};
+
+		du_01 {
+			status = "disabled";
+		};
+
+		dsi0 {
+			status = "disabled";
+		};
+
+		dsi0_01 {
+			status = "disabled";
+		};
+
+		dsi0_02 {
+			status = "disabled";
+		};
+
+		dsi0_03 {
+			status = "disabled";
+		};
+
+		dsi0_04 {
+			status = "disabled";
+		};
+
+		dsi0_05 {
+			status = "disabled";
+		};
+
+		dsi0_06 {
+			status = "disabled";
+		};
+
+		dsi0_07 {
+			status = "disabled";
+		};
+
+		dsi0_08 {
+			status = "disabled";
+		};
+
+		dsi1 {
+			status = "disabled";
+		};
+
+		dsi1_01 {
+			status = "disabled";
+		};
+
+		dsi1_02 {
+			status = "disabled";
+		};
+
+		dsi1_03 {
+			status = "disabled";
+		};
+
+		dsi1_04 {
+			status = "disabled";
+		};
+
+		dsi1_05 {
+			status = "disabled";
+		};
+
+		dsi1_06 {
+			status = "disabled";
+		};
+
+		dsi1_07 {
+			status = "disabled";
+		};
+
+		dsi1_08 {
+			status = "disabled";
+		};
+
+		doc0: doc@feba0000 {
+			status = "disabled";
+		};
+
+		doc0_01 {
+			status = "disabled";
+		};
+
+		dsc0: dsc@feb8d000 {
+			status = "disabled";
+		};
+	};
+};
+
+&i2c1 {
+	gmsl0: gmsl-deserializer@49 {
+		status = "disabled";
+	};
+
+	gmsl1: gmsl-deserializer@4b {
+		status = "disabled";
+	};
+};
+
+&pciec0 {
+	reset-gpio = <&io_expander_a 0 GPIO_ACTIVE_LOW>;
+	num-lanes = <4>;
+	clocks = <&cpg CPG_MOD 624>, <&cpg CPG_MOD 625>;
+	clock-names = "pcie0_clk", "pcie1_clk";
+	status = "okay";
+};
+
+&pciec0_ep {
+	num-lanes = <4>;
+	clocks = <&cpg CPG_MOD 624>, <&cpg CPG_MOD 625>;
+	clock-names = "pcie0_clk", "pcie1_clk";
+	status = "disabled";
+};

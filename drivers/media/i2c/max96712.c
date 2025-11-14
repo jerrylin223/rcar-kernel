@@ -28,6 +28,7 @@
 #define DEBUG_REG_DUMP			0
 #define DEBUG_COLOR_PATTERN		0
 #define DEBUG_MBPS			200000000
+#define FAST_STARTUP            1
 
 /* 0x01: internal type, 0x02: external type, 0x00: OFF */
 static unsigned int FSYNC_INT_EXT = 0x00;
@@ -88,16 +89,18 @@ struct max96712_priv {
 };
 
 static struct max96712_source *next_source(struct max96712_priv *priv,
-					  struct max96712_source *source)
+					                       struct max96712_source *source)
 {
-	if (!source)
+	if (!source) {
 		source = &priv->sources[0];
-	else
+	} else {
 		source++;
+	}
 
 	for (; source < &priv->sources[MAX96712_NUM_GMSL]; source++) {
-		if (source->fwnode)
+		if (source->fwnode) {
 			return source;
+		}
 	}
 
 	return NULL;
@@ -339,7 +342,6 @@ const struct max96712_reg max96712_out_disable[] = {
 /* -----------------------------------------------------------------------------
  * I2C IO
  */
-
 static int max96712_write_reg(struct max96712_priv *priv, u16 reg, u8 val)
 {
 	u8 regbuf[3];
@@ -353,8 +355,8 @@ static int max96712_write_reg(struct max96712_priv *priv, u16 reg, u8 val)
 	msleep(5);
 	if (ret < 0) {
 		dev_err(&priv->client->dev,
-			"%s: write reg error %d: reg=%x, val=%x\n",
-			__func__, ret, reg, val);
+			    "%s: write reg error %d: reg=%x, val=%x\n",
+			    __func__, ret, reg, val);
 		return ret;
 	}
 
@@ -372,36 +374,36 @@ static int max96712_read(struct max96712_priv *priv, u16 reg, u8 *val)
 	ret = i2c_master_send(priv->client, regbuf, 2);
 	if (ret < 0) {
 		dev_err(&priv->client->dev, "%s: write reg error %d: reg=%x\n",
-			__func__, ret, reg);
+			    __func__, ret, reg);
 		return ret;
 	}
 
 	ret = i2c_master_recv(priv->client, val, 1);
 	if (ret < 0) {
 		dev_err(&priv->client->dev, "%s: read reg error %d: reg=%x\n",
-			__func__, ret, reg);
+			    __func__, ret, reg);
 		return ret;
 	}
-
 	return 0;
 }
 
 static inline int max96712_update_bits(struct max96712_priv *priv, u16 reg,
-				       u8 mask, u8 bits)
+				                       u8 mask, u8 bits)
 {
 	int ret, tmp;
 	u8 val;
 
 	ret = max96712_read(priv, reg, &val);
-	if (ret != 0)
+	if (ret != 0) {
 		return ret;
+	}
 
 	tmp = val & ~mask;
 	tmp |= bits & mask;
 
-	if (tmp != val)
+	if (tmp != val) {
 		ret = max96712_write_reg(priv, reg, tmp);
-
+	}
 	return ret;
 }
 
@@ -429,7 +431,7 @@ static int max96712_power(struct max96712_priv *priv, int on)
 	if (on) {
 		max96712_read(priv, en_reg, &val);
 		if (priv->dev_id == MAX96724_ID || priv->dev_id == MAX96724F_ID || priv->dev_id == MAX96724R_ID)
-			val &= 0xFE;		// GPIO_DIS=0(GPIO enable)
+			val &= 0xFE;	// GPIO_DIS=0(GPIO enable)
 		val |= BIT(4);		// GPIO1=High=Camemra POC Protector ON
 		max96712_write_reg(priv, en_reg, val);
 		max96712_update_bits(priv, en_reg, 0x81, 0); // Resistor 40K
@@ -545,18 +547,42 @@ static void max96712_external_fsync(struct max96712_priv *priv)
 	max96712_update_bits(priv, 0x03AA, 0x3F, 0x2C);
 }
 
+//static void ap0202_change_config(struct max96712_priv *priv)
+//{
+	//reg16_write16_addr(priv->client, AP0202_ADDR, 0x098E, 0x7C00);
+	//msleep(200);
+
+	//reg16_write16_addr(priv->client, AP0202_ADDR, 0xFC00, 0x2800);
+	//reg16_write16_addr(priv->client, AP0202_ADDR, 0x0040, 0x8100);
+	//msleep(200);
+//}
+
 static void max96712_gmsl2_fsync_setup(struct max96712_priv *priv)
 {
-	if (FSYNC_INT_EXT == 0x01) 
-	{
+	if (FSYNC_INT_EXT == 0x01) {
 		/* From another MAX96712 */
 		max96712_internal_fsync(priv);
 	}
-	else if (FSYNC_INT_EXT == 0x02) 
-	{
+	else if (FSYNC_INT_EXT == 0x02) {
 		/* From SoC */
 		max96712_external_fsync(priv);
 	}
+	
+	//// AR0231's ISP
+	//if (FSYNC_INT_EXT == 0x02)
+	//{	
+		//reg16_write16_addr(priv->client, AP0202_ADDR, 0x098e, 0xc890);
+		//reg16_write_addr(priv->client, AP0202_ADDR, 0xc890, 0x03);
+		//reg16_write_addr(priv->client, AP0202_ADDR, 0xc891, 0x03);
+		//reg16_write_addr(priv->client, AP0202_ADDR, 0xc892, 0x00); // trigger types,continuous trigger mode
+		//ap0202_change_config(priv);
+	//} 
+	//else if (FSYNC_INT_EXT == 0x00)
+	//{
+		//reg16_write16_addr(priv->client, AP0202_ADDR, 0x098e, 0xc890);
+		//reg16_write_addr(priv->client, AP0202_ADDR, 0xc890, 0x00);
+		//ap0202_change_config(priv);
+	//}
 }
 
 static int max96712_enable(struct v4l2_subdev *sd, int enable)
@@ -616,76 +642,6 @@ static void max96712_debug_dump(struct max96712_priv *priv)
 			valu[i+9], valu[i+10], valu[i+11], valu[i+12], valu[i+13], valu[i+14], valu[i+15]);
 }
 #endif
-static int __max9295a_write(struct max96712_link *link, u16 reg, u8 val)
-{
-	u8 buf[3] = { reg >> 8, reg & 0xff, val };
-	int ret;
-
-	ret = i2c_master_send(link->client, buf, 3);
-	return ret < 0 ? ret : 0;
-}
-
-static int max9295a_set_regs(struct max96712_link *link,
-			     const struct max9295a_reg *regs,
-			     unsigned int nr_regs)
-{
-	unsigned int i;
-	int ret;
-
-	for (i = 0; i < nr_regs; i++) {
-		ret = __max9295a_write(link, regs[i].reg, regs[i].val);
-		msleep(5);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
-static void ap0202_change_config(void)
-{
-	//int ap0202_addrs = 0x5d;
-	//reg16_write16_addr(ap0202_addrs, 0x098E, 0x7C00);
-	//msleep(200);
-
-	//reg16_write16_addr(ap0202_addrs, 0xFC00, 0x2800);
-	//reg16_write16_addr(ap0202_addrs, 0x0040, 0x8100);
-	//msleep(200);
-}
-
-static int max9295a_sensor_set_regs(struct max96712_priv *priv, u32 link_nr)
-{
-	int ret;
-	struct max96712_link *link;
-
-	link = priv->link[link_nr];
-
-	__max9295a_write(link, 0x0010, 0x21);	/* SW reset */
-	msleep(200);
-
-	/* Program the camera sensor initial configuration. */
-	ret = max9295a_set_regs(link, configuretable_ar0231,
-				ARRAY_SIZE(configuretable_ar0231));
-	msleep(200);
-	
-	//int ap0202_addrs = 0x5d;	// AR0231's ISP
-	//if (FSYNC_INT_EXT == 0x02)
-	//{	
-		//reg16_write16_addr(link->client, ap0202_addrs, 0x098e, 0xc890);
-		//reg16_write_addr(link->client, ap0202_addrs, 0xc890, 0x03);
-		//reg16_write_addr(link->client, ap0202_addrs, 0xc891, 0x03);
-		//reg16_write_addr(link->client, ap0202_addrs, 0xc892, 0x00); // trigger types,continuous trigger mode
-		//ap0202_change_config();
-	//} 
-	//else if (FSYNC_INT_EXT == 0x00)
-	//{
-		//reg16_write16_addr(link->client, ap0202_addrs, 0x098e, 0xc890);
-		//reg16_write_addr(link->client, ap0202_addrs, 0xc890, 0x00);
-		//ap0202_change_config();
-	//}
-	
-	return ret;
-}
 
 /* -----------------------------------------------------------------------------
  * I2C Multiplexer
@@ -695,11 +651,13 @@ static int max96712_i2c_mux_select(struct i2c_mux_core *muxc, u32 chan)
 	struct max96712_priv *priv = i2c_mux_priv(muxc);
 
 	/* Channel select is disabled when configured in the opened state. */
-	if (priv->mux_open)
+	if (priv->mux_open) {
 		return 0;
+	}
 
-	if (priv->mux_channel == chan)
+	if (priv->mux_channel == chan) {
 		return 0;
+	}
 
 	priv->mux_channel = chan;
 
@@ -712,14 +670,16 @@ static int max96712_i2c_mux_init(struct max96712_priv *priv)
 	int ret;
 
 	if (!i2c_check_functionality(priv->client->adapter,
-				     I2C_FUNC_SMBUS_WRITE_BYTE_DATA))
+				                 I2C_FUNC_SMBUS_WRITE_BYTE_DATA)) {
 		return -ENODEV;
+	}
 
 	priv->mux = i2c_mux_alloc(priv->client->adapter, &priv->client->dev,
-				  priv->nsources, 0, I2C_MUX_LOCKED,
-				  max96712_i2c_mux_select, NULL);
-	if (!priv->mux)
+				              priv->nsources, 0, I2C_MUX_LOCKED,
+				              max96712_i2c_mux_select, NULL);
+	if (!priv->mux) {
 		return -ENOMEM;
+	}
 
 	priv->mux->priv = priv;
 
@@ -727,8 +687,9 @@ static int max96712_i2c_mux_init(struct max96712_priv *priv)
 		unsigned int index = to_index(priv, source);
 
 		ret = i2c_mux_add_adapter(priv->mux, 0, index, 0);
-		if (ret < 0)
+		if (ret < 0) {
 			goto error;
+		}
 	}
 
 	return 0;
@@ -736,67 +697,6 @@ error:
 	i2c_mux_del_adapters(priv->mux);
 	return ret;
 }
-
-/* -----------------------------------------------------------------------------
- * V4L2 Subdev
- */
-
-static int max96712_notify_bound(struct v4l2_async_notifier *notifier,
-				struct v4l2_subdev *subdev,
-				struct v4l2_async_subdev *asd)
-{
-	struct max96712_priv *priv = sd_to_max96712(notifier->sd);
-	struct max96712_source *source = asd_to_max96712_source(asd);
-	unsigned int index = to_index(priv, source);
-	unsigned int src_pad;
-	int ret;
-
-	ret = media_entity_get_fwnode_pad(&subdev->entity,
-					  source->fwnode,
-					  MEDIA_PAD_FL_SOURCE);
-	if (ret < 0) {
-		dev_err(&priv->client->dev,
-			"Failed to find pad for %s\n", subdev->name);
-		return ret;
-	}
-
-	source->sd = subdev;
-	src_pad = ret;
-	priv->bound_sources |= BIT(index);
-
-	ret = media_create_pad_link(&source->sd->entity, src_pad,
-				    &priv->sd.entity, index,
-				    MEDIA_LNK_FL_ENABLED |
-				    MEDIA_LNK_FL_IMMUTABLE);
-	if (ret) {
-		dev_err(&priv->client->dev,
-			"Unable to link %s:%u -> %s:%u\n",
-			source->sd->name, src_pad, priv->sd.name, index);
-		return ret;
-	}
-
-	dev_dbg(&priv->client->dev, "Bound %s pad: %u on index %u\n",
-		subdev->name, src_pad, index);
-
-	if (priv->bound_sources != priv->source_mask)
-		return 0;
-
-	return 0;
-}
-
-static void max96712_notify_unbind(struct v4l2_async_notifier *notifier,
-				  struct v4l2_subdev *subdev,
-				  struct v4l2_async_subdev *asd)
-{
-	struct max96712_source *source = asd_to_max96712_source(asd);
-
-	source->sd = NULL;
-}
-
-static const struct v4l2_async_notifier_operations max96712_notify_ops = {
-	.bound = max96712_notify_bound,
-	.unbind = max96712_notify_unbind,
-};
 
 static void max96712_reset_oneshot(struct max96712_priv *priv, int mask)
 {
@@ -809,22 +709,23 @@ static void max96712_reset_oneshot(struct max96712_priv *priv, int mask)
 	/* wait for one-shot bit self-cleared */
 	for (timeout = 0; timeout < 100; timeout++) {
 		max96712_read(priv, MAX96712_CTRL1, &val);
-		if (!(val & mask))
+		if (!(val & mask)) {
 			break;
+		}
 
 		mdelay(1);
 	}
 
-	if (val & mask)
-		dev_err(&priv->client->dev,
-			"Failed reset oneshot 0x%x\n", mask);
+	if (val & mask) {
+		dev_err(&priv->client->dev, "Failed reset oneshot 0x%x\n", mask);
+	}
 }
 
 static void max96712_disable(struct max96712_priv *priv)
 {
 	max96712_update_bits(priv, MAX_BACKTOP12(0), 0x02, 0);
 	max96712_update_bits(priv, MAX96712_VIDEO_PIPE_EN,
-			     priv->links_mask, 0);
+			             priv->links_mask, 0);
 	max96712_power(priv, 0);
 }
 
@@ -908,17 +809,18 @@ static int max96712_mipi_setup(struct max96712_priv *priv)
 	}
 
 	max96712_update_bits(priv, MAX_BACKTOP22(0), 0x3f,
-			     ((csi_rate / 100) & 0x1f) | BIT(5));
+			             ((csi_rate / 100) & 0x1f) | BIT(5));
 	max96712_update_bits(priv, MAX_BACKTOP25(0), 0x3f,
-			     ((csi_rate / 100) & 0x1f) | BIT(5));
+			             ((csi_rate / 100) & 0x1f) | BIT(5));
 	max96712_update_bits(priv, MAX_BACKTOP28(0), 0x3f,
-			     ((csi_rate / 100) & 0x1f) | BIT(5));
+			             ((csi_rate / 100) & 0x1f) | BIT(5));
 	max96712_update_bits(priv, MAX_BACKTOP31(0), 0x3f,
-			     ((csi_rate / 100) & 0x1f) | BIT(5));
+			             ((csi_rate / 100) & 0x1f) | BIT(5));
 
 	max96712_update_bits(priv, MAX_MIPI_PHY2, 0xf0, 0xf0);
-	if (priv->phy_pol_inv)
+	if (priv->phy_pol_inv) {
 		max96712_write_reg(priv, MAX_MIPI_PHY5, 0x10);
+	}
 
 	usleep_range(10000, 20000);
 
@@ -928,17 +830,16 @@ static int max96712_mipi_setup(struct max96712_priv *priv)
 static int max96712_gmsl2_get_link_lock(struct max96712_priv *priv, int link_n)
 {
 	int lock_reg[] = {MAX96712_CTRL3, MAX96712_CTRL12,
-			  MAX96712_CTRL13, MAX96712_CTRL14};
+			          MAX96712_CTRL13, MAX96712_CTRL14};
 	u8 val;
-
 	max96712_read(priv, lock_reg[link_n], &val);
 
 	return !!(val & BIT(3));
 }
 
 static void max96712_pipe_override(struct max96712_priv *priv,
-				   unsigned int pipe,
-				   unsigned int dt, unsigned int vc)
+				                   unsigned int pipe,
+				                   unsigned int dt, unsigned int vc)
 {
 	int bpp, bank;
 
@@ -950,69 +851,68 @@ static void max96712_pipe_override(struct max96712_priv *priv,
 	case 0:
 		/* Pipe X: 0 or 4 */
 		max96712_update_bits(priv, MAX_BACKTOP12(bank), 0x1f << 3,
-				     bpp << 3);
+				             bpp << 3);
 		max96712_update_bits(priv, MAX_BACKTOP13(bank), 0x0f, vc);
 		max96712_update_bits(priv, MAX_BACKTOP15(bank), 0x3f, dt);
 		max96712_update_bits(priv, bank ? MAX_BACKTOP28(0) :
-				     MAX_BACKTOP22(0), BIT(6), BIT(6));
+				             MAX_BACKTOP22(0), BIT(6), BIT(6));
 		break;
 	case 1:
 		/* Pipe Y: 1 or 5 */
 		max96712_update_bits(priv, MAX_BACKTOP18(bank), 0x1f, bpp);
 		max96712_update_bits(priv, MAX_BACKTOP13(bank), 0x0f << 4,
-				     vc << 4);
+				             vc << 4);
 		max96712_update_bits(priv, MAX_BACKTOP16(bank), 0x0f,
-				     dt & 0x0f);
+				             dt & 0x0f);
 		max96712_update_bits(priv, MAX_BACKTOP15(bank), 0x03 << 6,
-				     (dt & 0x30) << 2);
+				             (dt & 0x30) << 2);
 		max96712_update_bits(priv, bank ? MAX_BACKTOP28(0) :
-				     MAX_BACKTOP22(0), BIT(7), BIT(7));
+				             MAX_BACKTOP22(0), BIT(7), BIT(7));
 		break;
 	case 2:
 		/* Pipe Z: 2 or 6 */
 		max96712_update_bits(priv, MAX_BACKTOP19(bank), 0x03,
-				     bpp & 0x03);
+				             bpp & 0x03);
 		max96712_update_bits(priv, MAX_BACKTOP18(bank), 0xe0,
-				     (bpp & 0x1c) << 3);
+				             (bpp & 0x1c) << 3);
 		max96712_update_bits(priv, MAX_BACKTOP14(bank), 0x0f, vc);
 		max96712_update_bits(priv, MAX_BACKTOP17(bank), 0x03,
-				     dt & 0x03);
+				             dt & 0x03);
 		max96712_update_bits(priv, MAX_BACKTOP16(bank), 0x0f << 4,
-				     (dt & 0x3c) << 2);
+				             (dt & 0x3c) << 2);
 		max96712_update_bits(priv, bank ? MAX_BACKTOP30(0) :
-				     MAX_BACKTOP25(0), BIT(6), BIT(6));
+				             MAX_BACKTOP25(0), BIT(6), BIT(6));
 		break;
 	case 3:
 		/* Pipe U: 3 or 7 */
 		max96712_update_bits(priv, MAX_BACKTOP19(bank), 0xfc,
-				     bpp << 2);
+				             bpp << 2);
 		max96712_update_bits(priv, MAX_BACKTOP14(bank), 0x0f << 4,
-				     vc << 4);
+				             vc << 4);
 		max96712_update_bits(priv, MAX_BACKTOP17(bank), 0x3f << 2,
-				     dt << 2);
+				             dt << 2);
 		max96712_update_bits(priv, bank ? MAX_BACKTOP30(0) :
-				     MAX_BACKTOP25(0), BIT(7), BIT(7));
+				             MAX_BACKTOP25(0), BIT(7), BIT(7));
 		break;
 	}
 }
 
 static void max96712_mapping_pipe_to_mipi(struct max96712_priv *priv,
-					  unsigned int pipe,
-					  unsigned int map_n,
-					  unsigned int in_dt,
-					  unsigned int in_vc,
-					  unsigned int out_dt,
-					  unsigned int out_vc,
-					  unsigned int out_mipi)
+					  					  unsigned int pipe,
+					  					  unsigned int map_n,
+					  					  unsigned int in_dt,
+					  					  unsigned int in_vc,
+					 					  unsigned int out_dt,
+					 					  unsigned int out_vc,
+					 					  unsigned int out_mipi)
 {
 	int offset = 2 * (map_n % 4);
-
 	max96712_write_reg(priv, MAX_MIPI_MAP_SRC(pipe, map_n),
-			  (in_vc << 6) | in_dt);
+			           (in_vc << 6) | in_dt);
 	max96712_write_reg(priv, MAX_MIPI_MAP_DST(pipe, map_n),
-			  (out_vc << 6) | out_dt);
+			           (out_vc << 6) | out_dt);
 	max96712_update_bits(priv, MAX_MIPI_MAP_DST_PHY(pipe, map_n / 4),
-			     0x03 << offset, out_mipi << offset);
+			             0x03 << offset, out_mipi << offset);
 	/* enable SRC_n to DST_n mapping */
 	max96712_update_bits(priv, MAX_MIPI_TX11(pipe), BIT(map_n), BIT(map_n));
 	max96712_update_bits(priv, MAX_MIPI_TX11(pipe), BIT(map_n), BIT(map_n));
@@ -1021,10 +921,9 @@ static void max96712_mapping_pipe_to_mipi(struct max96712_priv *priv,
 }
 
 static void max96712_gmsl2_pipe_set_source(struct max96712_priv *priv,
-					   int pipe, int phy, int in_pipe)
+					                       int pipe, int phy, int in_pipe)
 {
 	int offset = (pipe % 2) * 4;
-
 	max96712_update_bits(priv, MAX96712_VIDEO_PIPE_SEL(pipe / 2),
 			     0x0f << offset, (phy << (offset + 2)) |
 			     (in_pipe << offset));
@@ -1042,7 +941,7 @@ static struct {
 };
 
 static void max96712_gmsl2_link_pipe_setup(struct max96712_priv *priv,
-					   int link_n)
+					                       int link_n)
 {
 	struct max96712_link *link = priv->link[link_n];
 	int pipe = link_n; /* straight mapping */
@@ -1073,7 +972,7 @@ static void max96712_gmsl2_link_pipe_setup(struct max96712_priv *priv,
 }
 
 static int max96712_gmsl2_reverse_channel_setup(struct max96712_priv *priv,
-						int link_n)
+						                        int link_n)
 {
 	struct max96712_link *link = priv->link[link_n];
 	int ser_addrs[] = {0x40, 0x42, 0x60, 0x62};
@@ -1106,8 +1005,7 @@ static int max96712_gmsl2_reverse_channel_setup(struct max96712_priv *priv,
 			dev_dbg(&priv->client->dev, "ID val:0x%x>\n", val);
 			link->ser_id = val;
 			 /* relocate serizlizer on I2C bus */
-			__reg16_write(ser_addrs[i], 0x0000,
-				      link->ser_addr << 1);
+			__reg16_write(ser_addrs[i], 0x0000, link->ser_addr << 1);
 			usleep_range(2000, 2500);
 			j = i;
 		}
@@ -1138,62 +1036,74 @@ static void max96712_setup(struct max96712_priv *priv)
 	max96712_gmsl2_initial_setup(priv);
 	max96712_mipi_setup(priv);
 	
-	if (FSYNC_INT_EXT != 0x00)
+	if (FSYNC_INT_EXT != 0x00) {
 		max96712_gmsl2_fsync_setup(priv);
+	}
 		
 	/* Start all cameras. */
 	for_each_source(priv, source) {
 		max96712_gmsl2_link_pipe_setup(priv, link);
 		ret = max96712_gmsl2_reverse_channel_setup(priv, link);
-		if (ret < 0)
+		if (ret < 0) {
 			source->linkup = false;
-		else
+		} else {
 			source->linkup = true;
+		}
 		link++;
 	}
 
 	return;
 }
 
+/* -----------------------------------------------------------------------------
+ * Start stream
+ */
 static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	int ret;
-	int link = 0;
+	// int link = 0;
 
 	struct max96712_priv *priv = sd_to_max96712(sd);
 	struct max96712_source *source;
 
 	if (enable && priv->stream_count == 0) {
+	#if FAST_STARTUP == 0
 		max96712_setup(priv);
 		max96712_postinit(priv);
+	#endif
 
 		for_each_source(priv, source) {
 			if (!source->linkup) {
-				link++;
+				// link++;
 				continue;
 			}
 
-			if (source->linkup)
-				max9295a_sensor_set_regs(priv, link);
-			link++;
+			if (source->linkup) {
+				// max9295a_sensor_set_regs(priv, link);
+			}
+			// link++;
 
 			ret = v4l2_subdev_call(source->sd, video,
-					       s_stream, 1);
-			if (ret)
+					               s_stream, 1);
+			if (ret) {
 				return ret;
+			}
 		}
 	} else if (!enable && priv->stream_count == 1) {
+	#if FAST_STARTUP == 0
 		max96712_disable(priv);
 
 		/* Stop all cameras. */
 		for_each_source(priv, source) {
-			if (!source->linkup)
+			if (!source->linkup) {
 				continue;
+			}
 
 			v4l2_subdev_call(source->sd, video, s_stream, 0);
 		}
 		gpiod_direction_output_raw(priv->gpiod_pwdn, 0);
 		gpiod_direction_output_raw(priv->gpiod_pwdn, 1);
+	#endif
 	}
 
 	priv->stream_count += enable ? 1 : -1;
@@ -1201,12 +1111,16 @@ static int max96712_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+/* -----------------------------------------------------------------------------
+ * V4L2 Subdev ops
+ */
 static int max96712_enum_mbus_code(struct v4l2_subdev *sd,
-				  struct v4l2_subdev_pad_config *cfg,
-				  struct v4l2_subdev_mbus_code_enum *code)
+				                   struct v4l2_subdev_pad_config *cfg,
+				                   struct v4l2_subdev_mbus_code_enum *code)
 {
-	if (code->pad || code->index > 0)
+	if (code->pad || code->index > 0) {
 		return -EINVAL;
+	}
 
 	code->code = MEDIA_BUS_FMT_Y10_1X10;
 
@@ -1215,8 +1129,8 @@ static int max96712_enum_mbus_code(struct v4l2_subdev *sd,
 
 static struct v4l2_mbus_framefmt *
 max96712_get_pad_format(struct max96712_priv *priv,
-		       struct v4l2_subdev_pad_config *cfg,
-		       unsigned int pad, u32 which)
+		                struct v4l2_subdev_pad_config *cfg,
+		                unsigned int pad, u32 which)
 {
 	switch (which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
@@ -1229,14 +1143,15 @@ max96712_get_pad_format(struct max96712_priv *priv,
 }
 
 static int max96712_set_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+			                struct v4l2_subdev_pad_config *cfg,
+			                struct v4l2_subdev_format *format)
 {
 	struct max96712_priv *priv = sd_to_max96712(sd);
 	struct v4l2_mbus_framefmt *cfg_fmt;
 
-	if (format->pad >= MAX96712_SRC_PAD)
+	if (format->pad >= MAX96712_SRC_PAD) {
 		return -EINVAL;
+	}
 
 	/* Refuse non YUV422 formats as we hardcode DT to 8 bit YUV422 */
 	switch (format->format.code) {
@@ -1250,62 +1165,61 @@ static int max96712_set_fmt(struct v4l2_subdev *sd,
 		break;
 	}
 
-	cfg_fmt = max96712_get_pad_format(priv, cfg,
-					  format->pad, format->which);
-	if (!cfg_fmt)
+	cfg_fmt = max96712_get_pad_format(priv, cfg, format->pad, format->which);
+	if (!cfg_fmt) {
 		return -EINVAL;
-
+	}
 	*cfg_fmt = format->format;
 
 	return 0;
 }
 
 static int max96712_get_fmt(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_pad_config *cfg,
-			   struct v4l2_subdev_format *format)
+			                struct v4l2_subdev_pad_config *cfg,
+			                struct v4l2_subdev_format *format)
 {
 	struct max96712_priv *priv = sd_to_max96712(sd);
 	struct v4l2_mbus_framefmt *cfg_fmt;
 
-	if (format->pad >= MAX96712_SRC_PAD)
+	if (format->pad >= MAX96712_SRC_PAD) {
 		return -EINVAL;
+	}
 
-	cfg_fmt = max96712_get_pad_format(priv, cfg, format->pad,
-					  format->which);
-	if (!cfg_fmt)
+	cfg_fmt = max96712_get_pad_format(priv, cfg, format->pad, format->which);
+	if (!cfg_fmt) {
 		return -EINVAL;
-
+	}
 	format->format = *cfg_fmt;
 
 	return 0;
 }
 
 static const struct v4l2_subdev_video_ops max96712_video_ops = {
-	.s_stream	= max96712_s_stream,
-	.enable_link	= max96712_enable,
+	.s_stream    = max96712_s_stream,
+	.enable_link = max96712_enable,
 };
 
 static const struct v4l2_subdev_pad_ops max96712_pad_ops = {
 	.enum_mbus_code = max96712_enum_mbus_code,
-	.get_fmt	= max96712_get_fmt,
-	.set_fmt	= max96712_set_fmt,
+	.get_fmt        = max96712_get_fmt,
+	.set_fmt        = max96712_set_fmt,
 };
 
 static const struct v4l2_subdev_ops max96712_subdev_ops = {
-	.video		= &max96712_video_ops,
-	.pad		= &max96712_pad_ops,
+	.video      = &max96712_video_ops,
+	.pad        = &max96712_pad_ops,
 };
 
 static void max96712_init_format(struct v4l2_mbus_framefmt *fmt)
 {
-	fmt->width		= 1920;
-	fmt->height		= 1020;
-	fmt->code		= MEDIA_BUS_FMT_Y10_1X10;
-	fmt->colorspace		= V4L2_COLORSPACE_SRGB;
-	fmt->field		= V4L2_FIELD_NONE;
-	fmt->ycbcr_enc		= V4L2_YCBCR_ENC_DEFAULT;
-	fmt->quantization	= V4L2_QUANTIZATION_DEFAULT;
-	fmt->xfer_func		= V4L2_XFER_FUNC_DEFAULT;
+	fmt->width          = 1920;
+	fmt->height         = 1020;
+	fmt->code           = MEDIA_BUS_FMT_Y10_1X10;
+	fmt->colorspace     = V4L2_COLORSPACE_SRGB;
+	fmt->field          = V4L2_FIELD_NONE;
+	fmt->ycbcr_enc      = V4L2_YCBCR_ENC_DEFAULT;
+	fmt->quantization   = V4L2_QUANTIZATION_DEFAULT;
+	fmt->xfer_func      = V4L2_XFER_FUNC_DEFAULT;
 }
 
 static int max96712_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
@@ -1326,9 +1240,67 @@ static const struct v4l2_subdev_internal_ops max96712_subdev_internal_ops = {
 };
 
 /* -----------------------------------------------------------------------------
- * Probe/Remove
+ * V4L2 Subdev bound
  */
+static int max96712_notify_bound(struct v4l2_async_notifier *notifier,
+				                 struct v4l2_subdev *subdev,
+				                 struct v4l2_async_subdev *asd)
+{
+	struct max96712_priv *priv = sd_to_max96712(notifier->sd);
+	struct max96712_source *source = asd_to_max96712_source(asd);
+	unsigned int index = to_index(priv, source);
+	unsigned int src_pad;
+	int ret;
 
+	ret = media_entity_get_fwnode_pad(&subdev->entity,
+					  source->fwnode,
+					  MEDIA_PAD_FL_SOURCE);
+	if (ret < 0) {
+		dev_err(&priv->client->dev,
+			"Failed to find pad for %s\n", subdev->name);
+		return ret;
+	}
+
+	source->sd = subdev;
+	src_pad = ret;
+	priv->bound_sources |= BIT(index);
+
+	ret = media_create_pad_link(&source->sd->entity, src_pad,
+				                &priv->sd.entity, index,
+				                MEDIA_LNK_FL_ENABLED |
+				                MEDIA_LNK_FL_IMMUTABLE);
+	if (ret) {
+		dev_err(&priv->client->dev, "Unable to link %s:%u -> %s:%u\n",
+			    source->sd->name, src_pad, priv->sd.name, index);
+		return ret;
+	}
+
+	dev_dbg(&priv->client->dev, "Bound %s pad: %u on index %u\n",
+		    subdev->name, src_pad, index);
+
+	if (priv->bound_sources != priv->source_mask) {
+		return 0;
+	}
+	return 0;
+}
+
+static void max96712_notify_unbind(struct v4l2_async_notifier *notifier,
+				                   struct v4l2_subdev *subdev,
+				                   struct v4l2_async_subdev *asd)
+{
+	struct max96712_source *source = asd_to_max96712_source(asd);
+
+	source->sd = NULL;
+}
+
+static const struct v4l2_async_notifier_operations max96712_notify_ops = {
+	.bound = max96712_notify_bound,
+	.unbind = max96712_notify_unbind,
+};
+
+/* -----------------------------------------------------------------------------
+ * Parse endpoint and subdev setup
+ */
 static const struct of_device_id max96712_dt_ids[] = {
 	{ .compatible = "maxim,max96712" },
 	{ .compatible = "maxim,max96724" },
@@ -1336,17 +1308,23 @@ static const struct of_device_id max96712_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, max96712_dt_ids);
 
-static int max96712_init(struct device *dev)
+static int max96712_v4l2_subdev_init(struct max96712_priv *priv)
 {
-	struct max96712_priv *priv;
-	struct i2c_client *client;
+	struct device *dev = &priv->client->dev;
+	struct i2c_client *client = priv->client;
+	struct device_node *np = dev->of_node;
 	struct fwnode_handle *ep;
 	unsigned int i, mbps;
 	int ret, bpp = 10;
 
 	/* Skip non-max96712 devices. */
-	if (!dev->of_node || !of_match_node(max96712_dt_ids, dev->of_node))
+	if (!np || !of_match_node(max96712_dt_ids, np)) {
 		return 0;
+	}
+
+	for (i = 0; i < MAX96712_N_SINKS; i++) {
+		max96712_init_format(&priv->fmt[i]);
+	}
 
 	client = to_i2c_client(dev);
 	priv = i2c_get_clientdata(client);
@@ -1362,24 +1340,26 @@ static int max96712_init(struct device *dev)
 	mbps = DEBUG_MBPS;
 #endif
 	v4l2_ctrl_new_std(&priv->ctrls, NULL, V4L2_CID_PIXEL_RATE,
-			  1, INT_MAX, 1, mbps);
+			          1, INT_MAX, 1, mbps);
 	priv->sd.ctrl_handler = &priv->ctrls;
+
 	ret = priv->ctrls.error;
-	if (ret)
+	if (ret) {
 		return ret;
+	}
 
 	priv->sd.entity.function = MEDIA_ENT_F_VID_IF_BRIDGE;
-
 	priv->pads[MAX96712_SRC_PAD].flags = MEDIA_PAD_FL_SOURCE;
-	for (i = 0; i < MAX96712_SRC_PAD; i++)
+	for (i = 0; i < MAX96712_SRC_PAD; i++) {
 		priv->pads[i].flags = MEDIA_PAD_FL_SINK;
-	ret = media_entity_pads_init(&priv->sd.entity, MAX96712_N_PADS,
-				     priv->pads);
-	if (ret)
-		return ret;
+	}
 
-	ep = fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), MAX96712_SRC_PAD,
-					     0, 0);
+	ret = media_entity_pads_init(&priv->sd.entity, MAX96712_N_PADS, priv->pads);
+	if (ret) {
+		return ret;
+	}
+
+	ep = fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), MAX96712_SRC_PAD, 0, 0);
 	if (!ep) {
 		dev_err(dev, "Unable to retrieve endpoint on \"port@4\"\n");
 		ret = -ENOENT;
@@ -1431,23 +1411,24 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 	struct device *dev = &priv->client->dev;
 	struct device_node *i2c_mux;
 	struct device_node *node = NULL;
-	struct device_node *np = priv->client->dev.of_node;
+	struct device_node *np = dev->of_node;
 	unsigned int i2c_mux_mask = 0;
 	int ret, pwdnb;
 
-	if (of_property_read_bool(np, "maxim,invert_phy-pol"))
+	if (of_property_read_bool(np, "maxim,invert_phy-pol")) {
 		priv->phy_pol_inv = true;
-	else
+	} else {
 		priv->phy_pol_inv = false;
+	}
 
 	pwdnb = of_get_gpio(np, 0);
-	if (!gpio_is_valid(pwdnb))
+	if (!gpio_is_valid(pwdnb)) {
 		return -EINVAL;
-
+	}
 	priv->gpiod_pwdn = gpio_to_desc(pwdnb);
 
 	of_node_get(dev->of_node);
-	i2c_mux = of_find_node_by_name(dev->of_node, "i2c-mux");
+	i2c_mux = of_find_node_by_name(np, "i2c-mux");
 	if (!i2c_mux) {
 		dev_err(dev, "Failed to find i2c-mux node\n");
 		return -EINVAL;
@@ -1458,24 +1439,24 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 		u32 id = 0;
 
 		of_property_read_u32(node, "reg", &id);
-		if (id >= MAX96712_NUM_GMSL)
+		if (id >= MAX96712_NUM_GMSL) {
 			continue;
+		}
 
 		if (!of_device_is_available(node)) {
-			dev_dbg(dev, "Skipping disabled I2C bus port %u\n",
-				id);
+			dev_dbg(dev, "Skipping disabled I2C bus port %u\n", id);
 			continue;
 		}
 
 		i2c_mux_mask |= BIT(id);
 	}
-	of_node_put(node);
+	// of_node_put(node);
 	of_node_put(i2c_mux);
 
 	v4l2_async_notifier_init(&priv->notifier);
 
 	/* Parse the endpoints */
-	for_each_endpoint_of_node(dev->of_node, node) {
+	for_each_endpoint_of_node(np, node) {
 		struct max96712_source *source;
 		struct of_endpoint ep;
 
@@ -1485,7 +1466,7 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 
 		if (ep.port > MAX96712_NUM_GMSL) {
 			dev_err(dev, "Invalid endpoint %s on port %d",
-				of_node_full_name(ep.local_node), ep.port);
+				    of_node_full_name(ep.local_node), ep.port);
 			continue;
 		}
 
@@ -1499,41 +1480,38 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 			ret = v4l2_fwnode_endpoint_parse(
 					of_fwnode_handle(node), &vep);
 			if (ret) {
-				of_node_put(node);
+				// of_node_put(node);
 				return ret;
 			}
 
 			if (vep.bus_type != V4L2_MBUS_CSI2_DPHY &&
 				vep.bus_type != V4L2_MBUS_CSI2_CPHY) {
-				dev_err(dev,
-					"Media bus %u type not supported\n",
-					vep.bus_type);
+				dev_err(dev, "Media bus %u type not supported\n",
+					    vep.bus_type);
 				v4l2_fwnode_endpoint_free(&vep);
-				of_node_put(node);
+				// of_node_put(node);
 				return -EINVAL;
 			}
 
-			if (vep.bus_type == V4L2_MBUS_CSI2_CPHY)
+			if (vep.bus_type == V4L2_MBUS_CSI2_CPHY) {
 				priv->cphy_connection = true;
-			else
+			} else {
 				priv->cphy_connection = false;
+			}
 
-			priv->csi2_data_lanes =
-				vep.bus.mipi_csi2.num_data_lanes;
+			priv->csi2_data_lanes = vep.bus.mipi_csi2.num_data_lanes;
 			v4l2_fwnode_endpoint_free(&vep);
-
 			continue;
 		}
 
 		/* Skip if the corresponding GMSL link is unavailable. */
-		if (!(i2c_mux_mask & BIT(ep.port)))
+		if (!(i2c_mux_mask & BIT(ep.port))) {
 			continue;
+		}
 
 		if (priv->sources[ep.port].fwnode) {
-			dev_err(dev,
-				"Multiple port endpoints are not supported: %d",
-				ep.port);
-
+			dev_err(dev, "Multiple port endpoints are not supported: %d",
+				    ep.port);
 			continue;
 		}
 
@@ -1541,10 +1519,8 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 		source->fwnode = fwnode_graph_get_remote_endpoint(
 						of_fwnode_handle(node));
 		if (!source->fwnode) {
-			dev_err(dev,
-				"Endpoint %pOF has no remote endpoint\n",
-				ep.local_node);
-
+			dev_err(dev, "Endpoint %pOF has no remote endpoint\n",
+				    ep.local_node);
 			continue;
 		}
 
@@ -1552,32 +1528,36 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 		source->asd.match.fwnode = source->fwnode;
 
 		ret = v4l2_async_notifier_add_subdev(&priv->notifier,
-						     &source->asd);
+						                     &source->asd);
 		if (ret) {
 			v4l2_async_notifier_cleanup(&priv->notifier);
-			of_node_put(node);
+			// of_node_put(node);
 			return ret;
 		}
 
 		priv->source_mask |= BIT(ep.port);
 		priv->nsources++;
 	}
-	of_node_put(node);
+	// of_node_put(node);
 
 	/* Do not register the subdev notifier if there are no devices. */
-	if (!priv->nsources)
+	if (!priv->nsources) {
 		return 0;
+	}
 
 	priv->route_mask = priv->source_mask;
 	priv->notifier.ops = &max96712_notify_ops;
 
 	ret = v4l2_async_subdev_notifier_register(&priv->sd, &priv->notifier);
-	if (ret)
+	if (ret) {
 		v4l2_async_notifier_cleanup(&priv->notifier);
-
+	}
 	return ret;
 }
 
+/* -----------------------------------------------------------------------------
+ * Probe/Remove
+ */
 static int max96712_probe(struct i2c_client *client)
 {
 	struct max96712_priv *priv;
@@ -1587,15 +1567,16 @@ static int max96712_probe(struct i2c_client *client)
 	struct device_node *np = client->dev.of_node;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
-	if (!priv)
+	if (!priv) {
 		return -ENOMEM;
+	}
 
 	for (i = 0; i < MAX96712_NUM_GMSL; i++) {
-		priv->link[i] = devm_kzalloc(&client->dev,
-					     sizeof(*priv->link[i]),
-					     GFP_KERNEL);
-		if (!priv->link[i])
+		priv->link[i] = devm_kzalloc(&client->dev, sizeof(*priv->link[i]),
+					                 GFP_KERNEL);
+		if (!priv->link[i]) {
 			return -ENOMEM;
+		}
 	}
 
 	priv->client = client;
@@ -1608,54 +1589,58 @@ static int max96712_probe(struct i2c_client *client)
 		priv->link[i]->ser_addr = addrs[i+1];
 		priv->link[i]->out_mipi = 1;
 		priv->link[i]->out_vc = i;
-		priv->link[i]->client = i2c_new_dummy_device(client->adapter,
-							     addrs[i+1]);
+		// priv->link[i]->client = i2c_new_dummy_device(client->adapter, addrs[i+1]);
 	}
 	i2c_set_clientdata(client, priv);
 
-	for (i = 0; i < MAX96712_N_SINKS; i++)
-		max96712_init_format(&priv->fmt[i]);
-
 	ret = max96712_parse_dt(priv);
-	if (ret < 0)
+	if (ret < 0) {
 		goto err_link;
+	}
 
 	gpiod_direction_output_raw(priv->gpiod_pwdn, 1);
 
-	dev_dbg(&client->dev,
-		"All max96712 probed: start initialization sequence\n");
+	dev_dbg(&client->dev, "All max96712 probed: start initialization sequence\n");
 
-	ret = max96712_init(&client->dev);
-	if (ret < 0)
+	ret = max96712_v4l2_subdev_init(priv);
+	if (ret < 0) {
 		goto err_free;
+	}
+
+#if FAST_STARTUP == 1
+	max96712_setup(priv);
+	max96712_postinit(priv);
+#endif
 
 	return 0;
 
 err_free:
 	max96712_cleanup_dt(priv);
 err_link:
-	for (i = 0; i < MAX96712_NUM_GMSL; i++)
-		i2c_unregister_device(priv->link[i]->client);
-
+	// for (i = 0; i < MAX96712_NUM_GMSL; i++) {
+	// 	i2c_unregister_device(priv->link[i]->client);
+	// }
 	return ret;
 }
 
 static int max96712_remove(struct i2c_client *client)
 {
+#if FAST_STARTUP == 0
 	int i;
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct max96712_priv *priv = sd_to_max96712(sd);
 
 	i2c_mux_del_adapters(priv->mux);
 
-	for (i = 0; i < MAX96712_NUM_GMSL; i++)
-		i2c_unregister_device(priv->link[i]->client);
+	// for (i = 0; i < MAX96712_NUM_GMSL; i++) {
+	// 	i2c_unregister_device(priv->link[i]->client);
+	// }
 
 	fwnode_handle_put(priv->sd.fwnode);
 	v4l2_async_unregister_subdev(&priv->sd);
 
 	max96712_cleanup_dt(priv);
-
+#endif
 	return 0;
 }
 
@@ -1667,7 +1652,7 @@ MODULE_DEVICE_TABLE(i2c, max96712_id);
 
 static struct i2c_driver max96712_i2c_driver = {
 	.driver	= {
-		.name		= "max96712",
+		.name	= "max96712",
 		.of_match_table	= of_match_ptr(max96712_dt_ids),
 	},
 	.probe_new	= max96712_probe,

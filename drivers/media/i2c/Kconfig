@@ -1346,6 +1346,14 @@ config VIDEO_DUMMY_CAMERA
 	  This camera should be used in conjunction with a GMSL2
 	  deserialiser such as the MAX96712.
 
+config VIDEO_MAXIM_MAX9295A
+	tristate "MAX9295A camera support"
+	depends on I2C && VIDEO_V4L2_SUBDEV_API && MEDIA_CONTROLLER
+	select V4L2_FWNODE
+	help
+	  This driver supports the LI-AR0231-AP0200-GMSL2 with MAX9295A.
+
+	  
 config VIDEO_ADP1653
 	tristate "ADP1653 flash support"
 	depends on I2C && VIDEO_V4L2

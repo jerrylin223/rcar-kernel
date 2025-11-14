@@ -1219,7 +1219,7 @@
 				reg = <0>;
 				status = "okay";
 				
-				camera@51 {
+				camera@7 {
 					compatible = FALCON_CAMERA;
 					reg = <CAM5>;
 
@@ -1237,7 +1237,7 @@
 				reg = <1>;
 				status = "okay";
 				
-				camera@52 {
+				camera@8 {
 					compatible = FALCON_CAMERA;
 					reg = <CAM6>;
 
@@ -1255,7 +1255,7 @@
 				reg = <2>;
 				status = "okay";
 				
-				camera@53 {
+				camera@9 {
 					compatible = FALCON_CAMERA;
 					reg = <CAM7>;
 
@@ -1273,7 +1273,7 @@
 				reg = <3>;
 				status = "okay";
 				
-				camera@54 {
+				camera@A {
 					compatible = FALCON_CAMERA;
 					reg = <CAM8>;
 

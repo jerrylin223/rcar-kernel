@@ -273,23 +273,6 @@ enum gmsl_mode {
 #define MAX9295_MIPI_RX2		0x332
 #define MAX9295_MIPI_RX3		0x333
 
-struct max9295a_device {
-	struct i2c_client *client;
-	int stream_count;
-};
-
-int max9295a_s_stream(struct max9295a_device *dev, bool enable);
-int max9295a_configure_i2c(struct max9295a_device *dev);
-int max9295a_configure_gmsl_link(struct max9295a_device *dev);
-int max9295a_set_gpio(struct max9295a_device *dev, u8 val);
-int max9295a_verify_id(struct max9295a_device *dev);
-int max9295a_set_address(struct max9295a_device *dev, u8 addr);
-
-struct max9295a_reg {
-	u16	reg;
-	u8	val;
-};
-
 static inline char *chip_name(int id)
 {
 	switch (id) {
@@ -319,34 +302,6 @@ static inline char *chip_name(int id)
 		return "serializer";
 	}
 }
-
-static const struct max9295a_reg configuretable_ar0231[] = {
-	{0x0002, 0x03}, /* VideoTX Disable and write 3 to reserved bits */
-	{0x0100, 0x60}, /* VIDEO_TX) - Line CRC enabled.  Encoding ON. Read back 62. */
-	{0x0101, 0x0A}, /* VIDEO_TX) - BPP Setting 10 bits. */
-
-	// Map GPIO8 for FV_OUT:  MAX96712 <== Camera-ISP(AP0202)-MAX9295A output
-	{0x02D6, 0x63}, /* GPIO_A - GPIO Tx */
-	{0x02D7, 0x2B}, /* GPIO_B - GPIO_TX_ID=11 */
-	{0x02D8, 0x0B}, /* GPIO_C(dummy) */
-
-	// MAX96712 MFP2 / MAX9295A MFP7.
-	// Map GPIO7 for FR_SYNC: MAX96712 ==> Camera-ISP(AP0202)-MAX9295A input
-	{0x02D3, 0x84}, /* GPIO_A - GPIO Rx */
-	{0x02D4, 0x2C}, /* GPIO_B(dummy) */
-	{0x02D5, 0x0C}, /* GPIO_C - for GPIO7 ... GPIO_RX_ID=12 */
-	
-	{0x0007, 0xC7}, /* Configure serializer for parallel sensor input */
-	{0x0332, 0xEE}, /* PHY lane mapping */
-	{0x0333, 0xE4}, /* PHY lane mapping */
-	{0x0314, 0x2B}, /* Select designated datatype to route to Video Pipeline X */
-	{0x0316, 0x22}, /* Select designated datatype to route to Video Pipeline Y */
-	{0x0318, 0x22}, /* Select designated datatype to route to Video Pipeline Z */
-	{0x031A, 0x22}, /* Select designated datatype to route to Video Pipeline U */
-	{0x031C, 0x2A}, /* Soft BPP Pipe X */
-	{0x0002, 0x13}, /* Video transmit Pipe X enable */
-	{0x03F1, 0x89}  /* Output RCLK to Sensor */
-};
 
 static inline int mipi_dt_to_bpp(unsigned int dt)
 {

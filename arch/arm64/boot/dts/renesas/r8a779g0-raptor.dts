@@ -1011,7 +1011,15 @@
  * I2C1 Function :
  * enable i2c1 and define gmsl serdes
  */
-#define FALCON_CAMERA  "dummy,camera"
+#define FALCON_CAMERA "maxim,max9295a"
+#define CAM1 0x03
+#define CAM2 0x04
+#define CAM3 0x05
+#define CAM4 0x06
+#define CAM5 0x07
+#define CAM6 0x08
+#define CAM7 0x09
+#define CAM8 0x0A
 &i2c1 {
 	pinctrl-0 = <&i2c1_pins>;
 	pinctrl-names = "default";
@@ -1024,7 +1032,7 @@
 		#gpio-cells = <2>;
 
 		compatible = "maxim,max96712";
-		reg = <0x49>, <0x01>, <0x02>, <0x03>, <0x04>;
+		reg = <0x49>, <CAM1>, <CAM2>, <CAM3>, <CAM4>;
 		gpios = <&U186 0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 
@@ -1081,9 +1089,9 @@
 				reg = <0>;
 				status = "okay";
 				
-				camera@51 {
+				camera@3 {
 					compatible = FALCON_CAMERA;
-					reg = <0x51>;
+					reg = <CAM1>;
 
 					port {
 						fakra_con0: endpoint {
@@ -1099,9 +1107,9 @@
 				reg = <1>;
 				status = "okay";
 				
-				camera@52 {
+				camera@4 {
 					compatible = FALCON_CAMERA;
-					reg = <0x52>;
+					reg = <CAM2>;
 
 					port {
 						fakra_con1: endpoint {
@@ -1117,9 +1125,9 @@
 				reg = <2>;
 				status = "okay";
 				
-				camera@53 {
+				camera@5 {
 					compatible = FALCON_CAMERA;
-					reg = <0x53>;
+					reg = <CAM3>;
 
 					port {
 						fakra_con2: endpoint {
@@ -1135,9 +1143,9 @@
 				reg = <3>;
 				status = "okay";
 				
-				camera@54 {
+				camera@6 {
 					compatible = FALCON_CAMERA;
-					reg = <0x54>;
+					reg = <CAM4>;
 
 					port {
 						fakra_con3: endpoint {
@@ -1154,7 +1162,7 @@
 		#gpio-cells = <2>;
 
 		compatible = "maxim,max96712";
-		reg = <0x4b>, <0x05>, <0x06>, <0x07>, <0x08>;
+		reg = <0x4b>, <CAM5>, <CAM6>, <CAM7>, <CAM8>;
 		gpios = <&U187 0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 
@@ -1213,7 +1221,7 @@
 				
 				camera@51 {
 					compatible = FALCON_CAMERA;
-					reg = <0x51>;
+					reg = <CAM5>;
 
 					port {
 						fakra_con4: endpoint {
@@ -1231,7 +1239,7 @@
 				
 				camera@52 {
 					compatible = FALCON_CAMERA;
-					reg = <0x52>;
+					reg = <CAM6>;
 
 					port {
 						fakra_con5: endpoint {
@@ -1249,7 +1257,7 @@
 				
 				camera@53 {
 					compatible = FALCON_CAMERA;
-					reg = <0x53>;
+					reg = <CAM7>;
 
 					port {
 						fakra_con6: endpoint {
@@ -1267,7 +1275,7 @@
 				
 				camera@54 {
 					compatible = FALCON_CAMERA;
-					reg = <0x54>;
+					reg = <CAM8>;
 
 					port {
 						fakra_con7: endpoint {
@@ -1763,4 +1771,3 @@
 &vin13 {
 	status = "okay";
 };
-

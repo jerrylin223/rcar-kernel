@@ -28,7 +28,7 @@
 #define DEBUG_REG_DUMP			0
 #define DEBUG_COLOR_PATTERN		0
 #define DEBUG_MBPS			200000000
-#define FAST_STARTUP            1
+#define FAST_STARTUP            0
 
 /* 0x01: internal type, 0x02: external type, 0x00: OFF */
 static unsigned int FSYNC_INT_EXT = 0x00;
@@ -1350,7 +1350,7 @@ static int max96712_v4l2_subdev_init(struct max96712_priv *priv)
 
 	priv->sd.entity.function = MEDIA_ENT_F_VID_IF_BRIDGE;
 	priv->pads[MAX96712_SRC_PAD].flags = MEDIA_PAD_FL_SOURCE;
-	for (i = 0; i < MAX96712_SRC_PAD; i++) {
+	for (i = 0; i < MAX96712_N_SINKS; i++) {
 		priv->pads[i].flags = MEDIA_PAD_FL_SINK;
 	}
 

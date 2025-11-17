@@ -1,5 +1,6 @@
 /*
  * The camera is connected to a Maxim MAX9295A GMSL2 serializer.
+ * Take MAX9295A as virtual sensor.
  */
 #include <linux/delay.h>
 #include <linux/fwnode.h>
@@ -9,24 +10,25 @@
 #include <linux/of_device.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
-
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
-
 #include "max9295a.h"
 
 #define CAMERA_WIDTH		1920
 #define CAMERA_HEIGHT		1020
 #define CAMERA_FORMAT		MEDIA_BUS_FMT_Y10_1X10
-#define MAX9295A_NUM_PADS   1
+#define MAX9295A_N_PADS     1
+#define MAX9295A_SRC_PAD    0
 
 struct max9295a_priv {
 	struct i2c_client        *client;
 	struct v4l2_subdev	      sd;
-	struct media_pad	      pads;
+	struct media_pad	      pads[MAX9295A_N_PADS];
+	struct v4l2_mbus_framefmt fmt[MAX9295A_N_PADS];
 	struct v4l2_ctrl_handler  ctrls;
 	struct fwnode_handle     *fwnode;
+	int stream_count;
 };
 
 static inline struct max9295a_priv *sd_to_max9295a(struct v4l2_subdev *sd)
@@ -77,18 +79,29 @@ static int max9295a_sensor_set_regs(struct max9295a_priv *priv)
 	return ret;
 }
 
+static int max9295a_initialize(struct max9295a_priv *priv)
+{
+	/* Implement as needed */
+	return 0;
+}
+
 static int max9295a_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct max9295a_priv *priv = sd_to_max9295a(sd);
 	struct device *dev = &priv->client->dev;
 	int ret;
 	
-	ret = max9295a_sensor_set_regs(priv);
-	if (ret) {
-		dev_err(dev, "Failed to max9295a set register\n");
-		return -EINVAL;
+	if (enable && priv->stream_count == 0) {
+		ret = max9295a_sensor_set_regs(priv);
+		if (ret) {
+			dev_err(dev, "Failed to max9295a set register\n");
+			return -EINVAL;
+		}
+	} else if (!enable && priv->stream_count == 1) {
+		// max9295a_disable(priv);
 	}
 
+	priv->stream_count += enable ? 1 : -1;
 	return 0;
 }
 
@@ -108,26 +121,75 @@ static int max9295a_enum_mbus_code(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static struct v4l2_mbus_framefmt *
+max9295a_get_pad_format(struct max9295a_priv *priv,
+		                struct v4l2_subdev_pad_config *cfg,
+		                unsigned int pad, u32 which)
+{
+	switch (which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		return v4l2_subdev_get_try_format(&priv->sd, cfg, pad);
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		return &priv->fmt[pad];
+	default:
+		return NULL;
+	}
+}
+
 static int max9295a_get_fmt(struct v4l2_subdev *sd,
 			                struct v4l2_subdev_pad_config *cfg,
 			                struct v4l2_subdev_format *format)
 {
-	struct v4l2_mbus_framefmt *fmt = &format->format;
+	struct max9295a_priv *priv = sd_to_max9295a(sd);
+	struct v4l2_mbus_framefmt *cfg_fmt = &format->format;
 
-	if (format->pad) {
+	if (format->pad >= MAX9295A_N_PADS) {
 		return -EINVAL;
 	}
 
-	fmt->width		  = CAMERA_WIDTH;
-	fmt->height		  = CAMERA_HEIGHT;
-	fmt->code		  = CAMERA_FORMAT;
-	fmt->colorspace	  = V4L2_COLORSPACE_RAW;
-	fmt->field		  = V4L2_FIELD_NONE;
-	fmt->ycbcr_enc	  = V4L2_YCBCR_ENC_601;
-	fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE;
-	fmt->xfer_func	  = V4L2_XFER_FUNC_NONE;
-
+    cfg_fmt->width        = CAMERA_WIDTH;
+    cfg_fmt->height       = CAMERA_HEIGHT;
+    cfg_fmt->code         = CAMERA_FORMAT; 
+    cfg_fmt->colorspace   = V4L2_COLORSPACE_SRGB;
+    cfg_fmt->field        = V4L2_FIELD_NONE;
+    cfg_fmt->ycbcr_enc    = V4L2_YCBCR_ENC_DEFAULT;
+    cfg_fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
+    cfg_fmt->xfer_func    = V4L2_XFER_FUNC_DEFAULT;
 	return 0;
+}
+
+static int max9295a_set_fmt(struct v4l2_subdev *sd,
+                            struct v4l2_subdev_pad_config *sd_state,
+                            struct v4l2_subdev_format *format)
+{
+	struct max9295a_priv *priv = sd_to_max9295a(sd);
+	struct v4l2_mbus_framefmt *cfg_fmt;
+
+	if (format->pad >= MAX9295A_N_PADS) {
+		return -EINVAL;
+	}
+	
+	/* Refuse non YUV422 formats as we hardcode DT to 8 bit YUV422 */
+	switch (format->format.code) {
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+	case MEDIA_BUS_FMT_VYUY8_2X8:
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+	case MEDIA_BUS_FMT_YVYU8_2X8:
+		break;
+	default:
+		format->format.code = MEDIA_BUS_FMT_Y10_1X10;
+		break;
+	}
+	format->format.width  = CAMERA_WIDTH;
+	format->format.height = CAMERA_HEIGHT;
+	
+	cfg_fmt = max9295a_get_pad_format(priv, sd_state, format->pad, format->which);
+	if (!cfg_fmt) {
+		return -EINVAL;
+	}
+	*cfg_fmt = format->format;
+
+    return 0;
 }
 
 static struct v4l2_subdev_video_ops max9295a_video_ops = {
@@ -137,7 +199,7 @@ static struct v4l2_subdev_video_ops max9295a_video_ops = {
 static const struct v4l2_subdev_pad_ops max9295a_subdev_pad_ops = {
 	.enum_mbus_code = max9295a_enum_mbus_code,
 	.get_fmt    = max9295a_get_fmt,
-	.set_fmt    = max9295a_get_fmt,
+	.set_fmt    = max9295a_set_fmt,
 };
 
 static struct v4l2_subdev_ops max9295a_subdev_ops = {
@@ -145,11 +207,31 @@ static struct v4l2_subdev_ops max9295a_subdev_ops = {
 	.pad        = &max9295a_subdev_pad_ops,
 };
 
-static int max9295a_initialize(struct max9295a_priv *priv)
+static void max9295a_init_format(struct v4l2_mbus_framefmt *fmt)
 {
-	/* Implement as needed */
-	return 0;
+    fmt->width        = CAMERA_WIDTH;
+    fmt->height       = CAMERA_HEIGHT;
+    fmt->code         = CAMERA_FORMAT; 
+    fmt->colorspace   = V4L2_COLORSPACE_SRGB;
+    fmt->field        = V4L2_FIELD_NONE;
+    fmt->ycbcr_enc    = V4L2_YCBCR_ENC_DEFAULT;
+    fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
+    fmt->xfer_func    = V4L2_XFER_FUNC_DEFAULT;
 }
+
+static int max9295a_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+    struct v4l2_mbus_framefmt *fmt;
+
+    fmt = v4l2_subdev_get_try_format(sd, fh->pad, MAX9295A_SRC_PAD);
+    max9295a_init_format(fmt);
+
+    return 0;
+}
+
+static const struct v4l2_subdev_internal_ops max9295a_subdev_internal_ops = {
+    .open = max9295a_open,
+};
 
 static const struct of_device_id max9295a_dt_ids[] = {
 	{ .compatible = "maxim,max9295a" },
@@ -162,7 +244,6 @@ static int max9295a_v4l2_subdev_init(struct max9295a_priv *priv)
 	struct device *dev = &priv->client->dev;
 	struct i2c_client *client = priv->client;
 	struct device_node *np = dev->of_node;
-	struct fwnode_handle *ep;
 	unsigned int i, mbps;
 	int ret, bpp = 10;
 
@@ -171,15 +252,19 @@ static int max9295a_v4l2_subdev_init(struct max9295a_priv *priv)
 		return 0;
 	}
 
+	for (i = 0; i < MAX9295A_N_PADS; i++) {
+		max9295a_init_format(&priv->fmt[i]);
+	}
+
 	client = to_i2c_client(dev);
 	priv = i2c_get_clientdata(client);
 
 	v4l2_i2c_subdev_init(&priv->sd, client, &max9295a_subdev_ops);
+	priv->sd.internal_ops = &max9295a_subdev_internal_ops;
 	priv->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	/* Optional Ctrl Handler */
 	v4l2_ctrl_handler_init(&priv->ctrls, 0);
-	priv->sd.ctrl_handler = &priv->ctrls;
 
 	/* 1920x1020@30Hz, RAW10 bpp = 10 */
 	mbps = 74230000 * bpp;	
@@ -187,9 +272,14 @@ static int max9295a_v4l2_subdev_init(struct max9295a_priv *priv)
 			          1, INT_MAX, 1, mbps);
 	priv->sd.ctrl_handler = &priv->ctrls;
 
-	/* Pads (one source pad) */
-	priv->pads.flags = MEDIA_PAD_FL_SOURCE;
-	ret = media_entity_pads_init(&priv->sd.entity, MAX9295A_NUM_PADS, &priv->pads);
+	ret = priv->ctrls.error;
+	if (ret) {
+		return ret;
+	}
+	
+	priv->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
+	priv->pads[MAX9295A_SRC_PAD].flags = MEDIA_PAD_FL_SOURCE;
+	ret = media_entity_pads_init(&priv->sd.entity, MAX9295A_N_PADS, priv->pads);
 
 	if (ret) {
 		return ret;
@@ -207,14 +297,10 @@ static int max9295a_v4l2_subdev_init(struct max9295a_priv *priv)
 	ret = v4l2_async_register_subdev(&priv->sd);
 	if (ret) {
 		dev_err(dev, "Failed to register subdev\n");
-		goto error_put_node;
+		return ret;
 	}
 
 	return 0;
-
-error_put_node:
-	fwnode_handle_put(ep);
-	return ret;
 }
 
 /* -----------------------------------------------------------------------------
@@ -233,6 +319,7 @@ static int max9295a_probe(struct i2c_client *client)
 	}
 
 	priv->client = client;
+	priv->stream_count = 0;
 
 	of_property_read_u32_array(np, "reg", addrs, ARRAY_SIZE(addrs));
 
@@ -255,7 +342,7 @@ static int max9295a_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct max9295a_priv *priv = sd_to_max9295a(sd);
 
-	media_entity_cleanup(&priv->sd.entity);
+	// media_entity_cleanup(&priv->sd.entity);
 	fwnode_handle_put(priv->sd.fwnode);
 	v4l2_async_unregister_subdev(&priv->sd);
 	return 0;

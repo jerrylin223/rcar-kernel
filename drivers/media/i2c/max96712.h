@@ -184,94 +184,9 @@ enum gmsl_mode {
 #define MIPI_DT_RAW20			0x2f
 #define MIPI_DT_YUV12			0x30
 
-#define MAX9295A_DEFAULT_ADDR	0x40
-
 #define MAXIM_I2C_I2C_SPEED_400KHZ	MAX9295A_I2CMSTBT_339KBPS
 #define MAXIM_I2C_I2C_SPEED_100KHZ	MAX9295A_I2CMSTBT_105KBPS
 #define MAXIM_I2C_SPEED			MAXIM_I2C_I2C_SPEED_100KHZ
-
-/* Register 0x04 */
-#define MAX9295A_SEREN			BIT(7)
-#define MAX9295A_CLINKEN		BIT(6)
-#define MAX9295A_PRBSEN			BIT(5)
-#define MAX9295A_SLEEP			BIT(4)
-#define MAX9295A_INTTYPE_I2C		(0 << 2)
-#define MAX9295A_INTTYPE_UART		(1 << 2)
-#define MAX9295A_INTTYPE_NONE		(2 << 2)
-#define MAX9295A_REVCCEN		BIT(1)
-#define MAX9295A_FWDCCEN		BIT(0)
-/* Register 0x07 */
-#define MAX9295A_DBL			BIT(7)
-#define MAX9295A_DRS			BIT(6)
-#define MAX9295A_BWS			BIT(5)
-#define MAX9295A_ES			BIT(4)
-#define MAX9295A_HVEN			BIT(2)
-#define MAX9295A_EDC_1BIT_PARITY	(0 << 0)
-#define MAX9295A_EDC_6BIT_CRC		(1 << 0)
-#define MAX9295A_EDC_6BIT_HAMMING	(2 << 0)
-/* Register 0x08 */
-#define MAX9295A_INVVS			BIT(7)
-#define MAX9295A_INVHS			BIT(6)
-#define MAX9295A_REV_LOGAIN		BIT(3)
-#define MAX9295A_REV_HIVTH		BIT(0)
-/* Register 0x09 */
-#define MAX9295A_ID_REG			0x09
-/* Register 0x0d */
-#define MAX9295A_I2CLOCACK		BIT(7)
-#define MAX9295A_I2CSLVSH_1046NS_469NS	(3 << 5)
-#define MAX9295A_I2CSLVSH_938NS_352NS	(2 << 5)
-#define MAX9295A_I2CSLVSH_469NS_234NS	(1 << 5)
-#define MAX9295A_I2CSLVSH_352NS_117NS	(0 << 5)
-#define MAX9295A_I2CMSTBT_837KBPS	(7 << 2)
-#define MAX9295A_I2CMSTBT_533KBPS	(6 << 2)
-#define MAX9295A_I2CMSTBT_339KBPS	(5 << 2)
-#define MAX9295A_I2CMSTBT_173KBPS	(4 << 2)
-#define MAX9295A_I2CMSTBT_105KBPS	(3 << 2)
-#define MAX9295A_I2CMSTBT_84KBPS	(2 << 2)
-#define MAX9295A_I2CMSTBT_28KBPS	(1 << 2)
-#define MAX9295A_I2CMSTBT_8KBPS		(0 << 2)
-#define MAX9295A_I2CSLVTO_NONE		(3 << 0)
-#define MAX9295A_I2CSLVTO_1024US	(2 << 0)
-#define MAX9295A_I2CSLVTO_256US		(1 << 0)
-#define MAX9295A_I2CSLVTO_64US		(0 << 0)
-/* Register 0x0f */
-#define MAX9295A_GPIO5OUT		BIT(5)
-#define MAX9295A_GPIO4OUT		BIT(4)
-#define MAX9295A_GPIO3OUT		BIT(3)
-#define MAX9295A_GPIO2OUT		BIT(2)
-#define MAX9295A_GPIO1OUT		BIT(1)
-#define MAX9295A_SETGPO			BIT(0)
-/* Register 0x15 */
-#define MAX9295A_PCLKDET		BIT(0)
-
-#define MAX9295_REG2			0x02
-#define MAX9295_REG7			0x07
-#define MAX9295_CTRL0			0x10
-#define MAX9295_I2C2			0x42
-#define MAX9295_I2C3			0x43
-#define MAX9295_I2C4			0x44
-#define MAX9295_I2C5			0x45
-#define MAX9295_I2C6			0x46
-
-#define MAX9295_CROSS(n)		(0x1b0 + n)
-
-#define MAX9295_GPIO_A(n)		(0x2be + (3 * n))
-#define MAX9295_GPIO_B(n)		(0x2bf + (3 * n))
-#define MAX9295_GPIO_C(n)		(0x2c0 + (3 * n))
-
-#define MAX9295_VIDEO_TX_BASE(n)	(0x100 + (0x8 * n))
-#define MAX9295_VIDEO_TX0(n)		(MAX9295_VIDEO_TX_BASE(n) + 0)
-#define MAX9295_VIDEO_TX1(n)		(MAX9295_VIDEO_TX_BASE(n) + 1)
-
-#define MAX9295_FRONTTOP_0		0x308
-#define MAX9295_FRONTTOP_9		0x311
-#define MAX9295_FRONTTOP_12		0x314
-#define MAX9295_FRONTTOP_13		0x315
-
-#define MAX9295_MIPI_RX0		0x330
-#define MAX9295_MIPI_RX1		0x331
-#define MAX9295_MIPI_RX2		0x332
-#define MAX9295_MIPI_RX3		0x333
 
 static inline char *chip_name(int id)
 {
@@ -640,43 +555,43 @@ static inline int get_des_addr(struct i2c_client *client)
 	return to_i2c_client(mux_priv->muxc->dev)->addr;
 }
 
-static inline void setup_i2c_translator(struct i2c_client *client, int ser_addr,
-					int sensor_addr)
-{
-	int gmsl_mode = MODE_GMSL2;
+// static inline void setup_i2c_translator(struct i2c_client *client, int ser_addr,
+// 					int sensor_addr)
+// {
+// 	int gmsl_mode = MODE_GMSL2;
 
-	switch (get_des_id(client)) {
-	case MAX9286_ID:
-	case MAX9288_ID:
-	case MAX96706_ID:
-		reg8_write_addr(client, ser_addr, 0x09, client->addr << 1);
-		reg8_write_addr(client, ser_addr, 0x0A, sensor_addr << 1);
-		break;
-	case MAX9296A_ID:
-	case MAX96712_ID:
-		/* parse gmsl mode from deserializer */
-		reg16_read_addr(client, get_des_addr(client), 6, &gmsl_mode);
-		gmsl_mode = !!(gmsl_mode & BIT(7)) + 1;
+// 	switch (get_des_id(client)) {
+// 	case MAX9286_ID:
+// 	case MAX9288_ID:
+// 	case MAX96706_ID:
+// 		reg8_write_addr(client, ser_addr, 0x09, client->addr << 1);
+// 		reg8_write_addr(client, ser_addr, 0x0A, sensor_addr << 1);
+// 		break;
+// 	case MAX9296A_ID:
+// 	case MAX96712_ID:
+// 		/* parse gmsl mode from deserializer */
+// 		reg16_read_addr(client, get_des_addr(client), 6, &gmsl_mode);
+// 		gmsl_mode = !!(gmsl_mode & BIT(7)) + 1;
 
-		if (gmsl_mode == MODE_GMSL1) {
-			reg8_write_addr(client, ser_addr, 0x09,
-					client->addr << 1);
-			reg8_write_addr(client, ser_addr, 0x0A,
-					sensor_addr << 1);
-		}
-		if (gmsl_mode == MODE_GMSL2) {
-			reg16_write_addr(client, ser_addr, MAX9295_I2C2,
-					 client->addr << 1);
-			reg16_write_addr(client, ser_addr, MAX9295_I2C3,
-					 sensor_addr << 1);
-		}
-		break;
-	case UB960_ID:
-		reg8_write_addr(client, get_des_addr(client), 0x65,
-				client->addr << 1);
-		reg8_write_addr(client, get_des_addr(client), 0x5d,
-				sensor_addr << 1);
-		break;
-	}
-	usleep_range(2000, 2500);
-}
+// 		if (gmsl_mode == MODE_GMSL1) {
+// 			reg8_write_addr(client, ser_addr, 0x09,
+// 					client->addr << 1);
+// 			reg8_write_addr(client, ser_addr, 0x0A,
+// 					sensor_addr << 1);
+// 		}
+// 		if (gmsl_mode == MODE_GMSL2) {
+// 			reg16_write_addr(client, ser_addr, MAX9295_I2C2,
+// 					 client->addr << 1);
+// 			reg16_write_addr(client, ser_addr, MAX9295_I2C3,
+// 					 sensor_addr << 1);
+// 		}
+// 		break;
+// 	case UB960_ID:
+// 		reg8_write_addr(client, get_des_addr(client), 0x65,
+// 				client->addr << 1);
+// 		reg8_write_addr(client, get_des_addr(client), 0x5d,
+// 				sensor_addr << 1);
+// 		break;
+// 	}
+// 	usleep_range(2000, 2500);
+// }

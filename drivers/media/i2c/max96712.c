@@ -58,31 +58,29 @@ struct max96712_link {
 
 struct max96712_priv {
 	struct i2c_client *client;
-	struct gpio_desc *gpiod_pwdn;
-	struct v4l2_subdev sd;
-	struct media_pad pads[MAX96712_N_PADS];
-	struct max96712_link *link[MAX96712_NUM_GMSL];
-
 	struct i2c_mux_core *mux;
 	unsigned int mux_channel;
-	bool mux_open;
-	bool phy_pol_inv;
-	int links_mask;
-	int dt;
-	int stream_count;
 
+	struct gpio_desc *gpiod_pwdn;
+	struct max96712_link *link[MAX96712_NUM_GMSL];
+	struct max96712_source sources[MAX96712_NUM_GMSL];
+
+	struct v4l2_subdev sd;
+	struct v4l2_async_notifier notifier;
 	struct v4l2_ctrl_handler ctrls;
-
 	struct v4l2_mbus_framefmt fmt[MAX96712_N_SINKS];
+	struct media_pad pads[MAX96712_N_PADS];
 
 	unsigned int nsources;
 	unsigned int source_mask;
 	unsigned int route_mask;
 	unsigned int bound_sources;
 	unsigned int csi2_data_lanes;
-	struct max96712_source sources[MAX96712_NUM_GMSL];
-	struct v4l2_async_notifier notifier;
-
+	bool mux_open;
+	bool phy_pol_inv;
+	int links_mask;
+	int dt;
+	int stream_count;
 	int fsync_period;
 	bool cphy_connection;
 	int dev_id;
@@ -1264,11 +1262,9 @@ static int max96712_notify_bound(struct v4l2_async_notifier *notifier,
 	source->sd = subdev;
 	src_pad = ret;
 	priv->bound_sources |= BIT(index);
-
 	ret = media_create_pad_link(&source->sd->entity, src_pad,
 				                &priv->sd.entity, index,
-				                MEDIA_LNK_FL_ENABLED |
-				                MEDIA_LNK_FL_IMMUTABLE);
+				                MEDIA_LNK_FL_ENABLED);	
 	if (ret) {
 		dev_err(&priv->client->dev, "Unable to link %s:%u -> %s:%u\n",
 			    source->sd->name, src_pad, priv->sd.name, index);
@@ -1280,6 +1276,20 @@ static int max96712_notify_bound(struct v4l2_async_notifier *notifier,
 
 	if (priv->bound_sources != priv->source_mask) {
 		return 0;
+	}
+
+	dev_dbg(&priv->client->dev, "[%s] source->sd (subdev) = %s, priv->sd = %s\n",
+	        __FUNCTION__, source->sd->name, priv->sd.name);
+
+	struct v4l2_ctrl *ser_mbps; 
+    struct v4l2_ctrl *des_mbps;
+    ser_mbps = v4l2_ctrl_find(subdev->ctrl_handler, V4L2_CID_PIXEL_RATE);
+    des_mbps = v4l2_ctrl_find(priv->sd.ctrl_handler, V4L2_CID_PIXEL_RATE);
+
+    if (ser_mbps && des_mbps) {
+		dev_dbg(&priv->client->dev, "Serializer mbps = %d\n", ser_mbps->val);
+		dev_dbg(&priv->client->dev, "MAX96712 mbps = %d\n", des_mbps->val);
+        // v4l2_ctrl_s_ctrl(des_mbps, ser_mbps->val);
 	}
 	return 0;
 }
@@ -1334,13 +1344,15 @@ static int max96712_v4l2_subdev_init(struct max96712_priv *priv)
 	priv->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 
 	v4l2_ctrl_handler_init(&priv->ctrls, 1);
-
-	mbps = 52000000 * bpp;	/* 1920x1020@30Hz, RAW10 bpp = 10 */
 #if DEBUG_COLOR_PATTERN
 	mbps = DEBUG_MBPS;
-#endif
 	v4l2_ctrl_new_std(&priv->ctrls, NULL, V4L2_CID_PIXEL_RATE,
-			          1, INT_MAX, 1, mbps);
+					1, INT_MAX, 1, mbps);
+#else
+// 	mbps = 74230000 * bpp;	/* 1920x1020@30Hz, RAW10 bpp = 10 */
+	v4l2_ctrl_new_std(&priv->ctrls, NULL, V4L2_CID_PIXEL_RATE,
+			          1, INT_MAX, 1, 1);
+#endif
 	priv->sd.ctrl_handler = &priv->ctrls;
 
 	ret = priv->ctrls.error;
@@ -1561,10 +1573,10 @@ static int max96712_parse_dt(struct max96712_priv *priv)
 static int max96712_probe(struct i2c_client *client)
 {
 	struct max96712_priv *priv;
+	struct device_node *np = client->dev.of_node;
 	unsigned int i;
 	int ret;
 	int addrs[5];
-	struct device_node *np = client->dev.of_node;
 
 	priv = devm_kzalloc(&client->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv) {

@@ -1771,23 +1771,3 @@
 &vin13 {
 	status = "okay";
 };
-
-&ipmmu_mm {
-	status = "okay";
-};
-
-&ipmmu_vi0 {
-	status = "okay";
-};
-
-&ipmmu_vi1 {
-	status = "disabled";
-};
-
-&ipmmu_3dg {
-	status = "disabled";
-};
-
-&ipmmu_ir {
-	status = "disabled";
-};

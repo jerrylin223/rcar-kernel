@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 /*
- * Device Tree Source support Native for the White Hawk CPU
+ * Device Tree Source support Native RGID for the White Hawk CPU
  * boards with R-Car V4H
  *
- * Copyright (C) 2024 Renesas Electronics Corp.
+ * Copyright (C) 2025 Renesas Electronics Corp.
  */
 
-#include "r8a779g0.dtsi"
+#include "r8a779g0-rgid.dtsi"
 
 / {
 	compatible = "renesas,r8a779g0-native", "renesas,r8a779g0";

@@ -79,6 +79,11 @@ dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g3-whitehawk-native.dtb r8a779g3-whitehawk-
 dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g4-whitehawk-native.dtb r8a779g4-whitehawk-du-native.dtb
 dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g5-whitehawk-native.dtb r8a779g5-whitehawk-du-native.dtb
 
+dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g0-whitehawk-native-rgid.dtb
+dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g3-whitehawk-native-rgid.dtb
+dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g4-whitehawk-native-rgid.dtb
+dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g5-whitehawk-native-rgid.dtb
+
 dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g3-white-hawk.dtb r8a779g3-white-hawk-rgid.dtb
 dtb-$(CONFIG_ARCH_R8A779G0) += r8a779g3-whitehawk-sound.dtb r8a779g3-whitehawk-sound-rgid.dtb
 

@@ -10,13 +10,14 @@
 #include <dt-bindings/media/r8a779g0-csi2.h>
 
 #define AUDIO_CODEC_DA7212		1
-#define AUDIO_CODEC_MAX98357A	2
+#define AUDIO_CODEC_MAX98357A		2
 #define AUDIO_CODEC_LT9611		3
 #define AUDIO_CODEC_SELECTION	AUDIO_CODEC_MAX98357A
 
 / {
-	model = "Renesas Raptor board based on r8a779g0";
-	compatible = "renesas,raptor-cpu", "renesas,r8a779g0";
+	model = "Renesas Raptor board based on r8a779g5";
+	compatible = "renesas,raptor", "renesas,r8a779g5",
+		     "renesas,r8a779g0";
 
 	aliases {
 		ethernet0 = &avb0;
@@ -78,6 +79,16 @@
 			compatible = "shared-dma-pool";
 			reusable;
 			reg = <0x6 0x00000000 0x0 0x40000000>;
+		};
+
+		ecc_data_region@4cccc0000 {
+			no-map;
+			reg = <0x4 0xcccc0000 0x0 0x33340000>;
+		};
+
+		ecc_data_region@6cccc0000 {
+			no-map;
+			reg = <0x6 0xcccc0000 0x0 0x33340000>;
 		};
 	};
 

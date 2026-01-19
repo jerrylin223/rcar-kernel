@@ -8,12 +8,9 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
 
-#include "r8a779g0.dtsi"
+#include "r8a779g5.dtsi"
 
 / {
-	model = "Renesas Raptor CPU board";
-	compatible = "renesas,raptor-cpu", "renesas,r8a779g0";
-
 	aliases {
 		serial0 = &hscif0;
 		serial3 = &hscif3;

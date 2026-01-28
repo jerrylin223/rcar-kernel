@@ -15,8 +15,8 @@
 #define AUDIO_CODEC_SELECTION	AUDIO_CODEC_MAX98357A
 
 / {
-	model = "Renesas Raptor board based on r8a779g5";
-	compatible = "renesas,raptor", "renesas,r8a779g5",
+	model = "Renesas Raptor board based on r8a779g3";
+	compatible = "renesas,raptor", "renesas,r8a779g3",
 		     "renesas,r8a779g0";
 
 	aliases {

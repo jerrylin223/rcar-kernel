@@ -328,7 +328,7 @@
 	status = "okay";
 
 	mux@71 {
-		compatible = "nxp,pca7544";   /* TCA9544 */
+		compatible = "nxp,pca9544";   /* TCA9544 */
 		reg = <0x71>;
 		#address-cells = <1>;
 		#size-cells = <0>;

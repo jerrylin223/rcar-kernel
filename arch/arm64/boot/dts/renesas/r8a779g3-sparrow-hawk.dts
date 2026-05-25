@@ -415,6 +415,8 @@
 
 		port {
 			da7212_endpoint: endpoint {
+				bitclock-master;
+				frame-master;
 				remote-endpoint = <&msiof1_snd_endpoint>;
 			};
 		};
@@ -479,6 +481,7 @@
 	msiof1_snd: port {
 		reg = <0>;
     		msiof1_snd_endpoint: endpoint {
+			dai-format = "i2s";
 			remote-endpoint = <&da7212_endpoint>;		     
 		};		
 	};
@@ -695,6 +698,7 @@
 	/* It is used for ADG output as DA7212_MCLK */
 
 	/* audio_clkout */
+	#clock-cells = <0>;
 	clock-frequency = <12288000>; /* 48kHz groups */
 
 	status = "okay";

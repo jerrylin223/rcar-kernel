@@ -403,7 +403,7 @@
 	codec@1a {
 		compatible = "dlg,da7212";
 
-		#sound-dia-cells = <0>;
+		#sound-dai-cells = <0>;
 		reg = <0x1a>;
 
 		clocks = <&rcar_sound>;

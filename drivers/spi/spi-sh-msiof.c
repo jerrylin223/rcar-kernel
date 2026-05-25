@@ -1352,6 +1352,11 @@ static int sh_msiof_spi_probe(struct platform_device *pdev)
 	int ret;
 	const struct soc_device_attribute *attr;
 
+
+	/* Check MSIOF as Sound mode or SPI mode */
+	if (of_get_child_by_name(pdev->dev.of_node, "ports") || of_get_child_by_name(pdev->dev.of_node, "port"))
+		return -ENODEV;
+
 	chipdata = of_device_get_match_data(&pdev->dev);
 	if (chipdata) {
 		info = sh_msiof_spi_parse_dt(&pdev->dev);

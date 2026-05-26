@@ -444,6 +444,7 @@
 &i2c1 {
 	pinctrl-0 = <&i2c1_pins>;
 	pinctrl-names = "default";
+	clock-frequency = <400000>;
 	status = "okay";
 
 	cam_j1@10 {
@@ -473,6 +474,7 @@
 &i2c2 {
 	pinctrl-0 = <&i2c2_pins>;
 	pinctrl-names = "default";
+	clock-frequency = <400000>;
 	status = "okay";
 
 	cam_j2@10 {

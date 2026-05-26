@@ -390,9 +390,9 @@
 		clocks = <&ref_clk>;
 		clock-names = "refclk";
 		dp-connector;
-		no-use-gpio;
 		no-use-scramble;
 		hpd-poll;
+		enable-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
 
 		ports {
 			#address-cells = <1>;

@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Overlay for the Sparrow Hawk board on DSI0 port
+ *
+ * Copyright 2026 Retronix Technology Corp.
+ */
+ 
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+
+&{/} {
+	reg_display: reg_display {
+		compatible = "regulator-fixed";
+		regulator-name = "reg_display";
+		gpio = <&display_mcu 1 GPIO_ACTIVE_HIGH>;
+		startup-delay-us = <50000>;
+		enable-active-high;
+	};
+};
+
+&i2c0_mux_ch3 {
+	display_mcu: display_mcu@45
+	{
+		compatible = "raspberrypi,v2-touchscreen-panel-regulator";
+		reg = <0x45>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+	
+	gt911: gt911@5d {
+		compatible = "goodix,gt911";
+		reg = <0x5d>;
+		AVDD28-supply = <&reg_display>;
+		touchscreen-size-x = <720>;
+		touchscreen-size-y = <1280>;
+		touchscreen-x-mm = <90>;
+		touchscreen-y-mm = <151>;
+	};
+};
+
+&dsi0 {
+	status = "okay";
+
+	ports {
+		port@1 {
+			endpoint {
+				remote-endpoint = <&panel_in>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+
+	dsi_panel: dsi_panel@0 {
+		reg = <0>;
+		compatible = "raspberrypi,dsi-7inch";
+		reset-gpio = <&display_mcu 0 GPIO_ACTIVE_LOW>;
+		backlight = <&display_mcu>;
+
+		port {
+			panel_in: endpoint {
+				remote-endpoint = <&dsi0_out>;
+			};
+		};
+	};
+};

@@ -601,7 +601,10 @@ static int rcar_mipi_dsi_startup(struct rcar_mipi_dsi *mipi_dsi)
 	udelay(10);
 	rcar_mipi_dsi_clr(mipi_dsi, CLOCKSET1, CLOCKSET1_UPDATEPLL);
 
-	ppisetr = PPISETR_DLEN_3 | PPISETR_CLEN;
+	rcar_mipi_dsi_clr(mipi_dsi, TXSETR, TXSETR_LANECNT_MASK);
+	rcar_mipi_dsi_set(mipi_dsi, TXSETR, mipi_dsi->lanes - 1);
+
+	ppisetr = ((BIT(mipi_dsi->lanes) - 1) & PPISETR_DLEN_MASK) | PPISETR_CLEN;
 	rcar_mipi_dsi_write(mipi_dsi, PPISETR, ppisetr);
 
 	rcar_mipi_dsi_set(mipi_dsi, PHYSETUP, PHYSETUP_SHUTDOWNZ);

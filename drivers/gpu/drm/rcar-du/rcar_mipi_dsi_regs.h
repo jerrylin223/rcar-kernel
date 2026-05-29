@@ -16,6 +16,40 @@
 #define TXSETR_LANECNT_MASK		(0x3 << 0)
 
 /*
+ * DSI Command Transfer Registers
+ */
+#define TXCMSETR			0x110
+#define TXCMSETR_SPDTYP			BIT(8)	/* 0:HS 1:LP */
+#define TXCMSETR_LPPDACC		BIT(0)
+#define TXCMCR				0x120
+#define TXCMCR_BTATYP			BIT(2)
+#define TXCMCR_BTAREQ			BIT(1)
+#define TXCMCR_TXREQ			BIT(0)
+#define TXCMSR				0x130
+#define TXCMSR_CLSNERR			BIT(18)
+#define TXCMSR_AXIERR			BIT(16)
+#define TXCMSR_TXREQEND			BIT(0)
+#define TXCMSCR				0x134
+#define TXCMSCR_CLSNERR			BIT(18)
+#define TXCMSCR_AXIERR			BIT(16)
+#define TXCMSCR_TXREQEND		BIT(0)
+#define TXCMIER				0x138
+#define TXCMIER_CLSNERR			BIT(18)
+#define TXCMIER_AXIERR			BIT(16)
+#define TXCMIER_TXREQEND		BIT(0)
+#define TXCMADDRSET0R			0x140
+#define TXCMPHDR			0x150
+#define TXCMPHDR_FMT			BIT(24)	/* 0:SP 1:LP */
+#define TXCMPHDR_VC(n)			(((n) & 0x3) << 22)
+#define TXCMPHDR_DT(n)			(((n) & 0x3f) << 16)
+#define TXCMPHDR_DATA1(n)		(((n) & 0xff) << 8)
+#define TXCMPHDR_DATA0(n)		(((n) & 0xff) << 0)
+#define TXCMPPD0R			0x160
+#define TXCMPPD1R			0x164
+#define TXCMPPD2R			0x168
+#define TXCMPPD3R			0x16c
+
+/*
  * Video Mode Register
  */
 #define TXVMSETR		0x180

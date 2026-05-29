@@ -23,6 +23,7 @@
 #include <drm/drm_panel.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_mipi_dsi.h>
+#include <drm/drm_of.h>
 
 #include "rcar_mipi_dsi.h"
 #include "rcar_mipi_dsi_regs.h"
@@ -766,12 +767,28 @@ static int rcar_mipi_dsi_attach(struct drm_bridge *bridge,
 				enum drm_bridge_attach_flags flags)
 {
 	struct rcar_mipi_dsi *mipi_dsi = bridge_to_rcar_mipi_dsi(bridge);
+	struct drm_bridge *next_bridge;
+	struct drm_panel *panel;
+	int ret;
 
-	if (mipi_dsi->next_bridge)
-		return drm_bridge_attach(bridge->encoder, mipi_dsi->next_bridge,
-					bridge, flags);
-	else
-		return -ENODEV;
+	ret = drm_of_find_panel_or_bridge(mipi_dsi->dev->of_node, 1, 0, &panel,
+					  &next_bridge);
+	if (ret)
+		return ret;
+
+	if (panel) {
+		next_bridge = drm_panel_bridge_add(panel);
+		if (IS_ERR(next_bridge))
+			return PTR_ERR(next_bridge);
+	}
+
+	if (!next_bridge)
+		return -EPROBE_DEFER;
+
+	mipi_dsi->next_bridge = next_bridge;
+
+	return drm_bridge_attach(bridge->encoder, mipi_dsi->next_bridge, bridge,
+				 flags);
 }
 
 static void rcar_mipi_dsi_mode_set(struct drm_bridge *bridge,
@@ -899,11 +916,8 @@ static const struct mipi_dsi_host_ops rcar_mipi_dsi_host_ops = {
 static int rcar_mipi_dsi_parse_dt(struct rcar_mipi_dsi *mipi_dsi)
 {
 	struct device_node *local_output = NULL;
-	struct device_node *remote_input = NULL;
 	struct device_node *remote = NULL;
-	struct device_node *node;
 	struct property *prop;
-	bool is_bridge = false;
 	int ret = 0;
 	int len, num_lanes;
 
@@ -940,30 +954,6 @@ static int rcar_mipi_dsi_parse_dt(struct rcar_mipi_dsi *mipi_dsi)
 		goto done;
 	}
 
-	remote_input = of_graph_get_remote_endpoint(local_output);
-
-	for_each_endpoint_of_node(remote, node) {
-		if (node != remote_input) {
-			/*
-			 * The endpoint which is not input node must be bridge
-			 */
-			is_bridge = true;
-			of_node_put(node);
-			break;
-		}
-	}
-
-	if (is_bridge) {
-		mipi_dsi->next_bridge = of_drm_find_bridge(remote);
-		if (!mipi_dsi->next_bridge) {
-			ret = -EPROBE_DEFER;
-			goto done;
-		}
-	} else {
-		ret = -ENODEV;
-		goto done;
-	}
-
 	/* Get lanes information */
 	prop = of_find_property(local_output, "data-lanes", &len);
 	if (!prop) {
@@ -983,7 +973,6 @@ static int rcar_mipi_dsi_parse_dt(struct rcar_mipi_dsi *mipi_dsi)
 	mipi_dsi->num_data_lanes = num_lanes;
 done:
 	of_node_put(local_output);
-	of_node_put(remote_input);
 	of_node_put(remote);
 
 	return ret;

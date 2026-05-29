@@ -880,6 +880,10 @@ static int rcar_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 static int rcar_mipi_dsi_host_detach(struct mipi_dsi_host *host,
 					struct mipi_dsi_device *device)
 {
+	struct rcar_mipi_dsi *dsi = host_to_rcar_mipi_dsi(host);
+
+	drm_bridge_remove(&dsi->bridge);
+
 	return 0;
 }
 

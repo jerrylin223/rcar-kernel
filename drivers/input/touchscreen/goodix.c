@@ -64,6 +64,8 @@
 #define MAX_CONTACTS_LOC	5
 #define TRIGGER_LOC		6
 
+#define GOODIX_POLL_INTERVAL_MS		17	/* 17ms = 60fps */
+
 /* Our special handling for GPIO accesses through ACPI is x86 specific */
 #if defined CONFIG_X86 && defined CONFIG_ACPI
 #define ACPI_GPIO_SUPPORT
@@ -453,13 +455,37 @@ static irqreturn_t goodix_ts_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static void goodix_ts_work_i2c_poll(struct input_dev *input)
+{
+	struct goodix_ts_data *ts = input_get_drvdata(input);
+
+	goodix_process_events(ts);
+	goodix_i2c_write_u8(ts->client, GOODIX_READ_COOR_ADDR, 0);
+}
+
+static void goodix_enable_irq(struct goodix_ts_data *ts)
+{
+	if (ts->client->irq)
+		enable_irq(ts->client->irq);
+}
+
+static void goodix_disable_irq(struct goodix_ts_data *ts)
+{
+	if (ts->client->irq)
+		disable_irq(ts->client->irq);
+}
+
 static void goodix_free_irq(struct goodix_ts_data *ts)
 {
-	devm_free_irq(&ts->client->dev, ts->client->irq, ts);
+	if (ts->client->irq)
+		devm_free_irq(&ts->client->dev, ts->client->irq, ts);
 }
 
 static int goodix_request_irq(struct goodix_ts_data *ts)
 {
+	if (!ts->client->irq)
+		return 0;
+
 	return devm_request_threaded_irq(&ts->client->dev, ts->client->irq,
 					 NULL, goodix_ts_irq_handler,
 					 ts->irq_flags, ts->client->name, ts);
@@ -1122,6 +1148,17 @@ retry_read_config:
 		return error;
 	}
 
+	input_set_drvdata(ts->input_dev, ts);
+	if (!ts->client->irq) {
+		error = input_setup_polling(ts->input_dev, goodix_ts_work_i2c_poll);
+		if (error) {
+			dev_err(&ts->client->dev,
+				"could not set up polling mode, %d\n", error);
+			return error;
+		}
+		input_set_poll_interval(ts->input_dev, GOODIX_POLL_INTERVAL_MS);
+	}
+
 	error = input_register_device(ts->input_dev);
 	if (error) {
 		dev_err(&ts->client->dev,
@@ -1301,7 +1338,7 @@ static int __maybe_unused goodix_suspend(struct device *dev)
 
 	/* We need gpio pins to suspend/resume */
 	if (ts->irq_pin_access_method == IRQ_PIN_ACCESS_NONE) {
-		disable_irq(client->irq);
+		goodix_disable_irq(ts);
 		return 0;
 	}
 
@@ -1343,7 +1380,7 @@ static int __maybe_unused goodix_resume(struct device *dev)
 	int error;
 
 	if (ts->irq_pin_access_method == IRQ_PIN_ACCESS_NONE) {
-		enable_irq(client->irq);
+		goodix_enable_irq(ts);
 		return 0;
 	}
 

@@ -318,7 +318,7 @@
 /* Page 31 / IO_CN */
 &hscif3 {	/* CN7 pins 8 (TX) and 10 (RX) */
 	pinctrl-0 = <&hscif3_pins>;
-	pinctrl-name = "default";
+	pinctrl-names = "default";
 
 	status = "okay";
 };
